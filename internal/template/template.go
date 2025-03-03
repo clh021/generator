@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"text/template"
+	"time"
 
 	"gopkg.in/yaml.v3"
 )
@@ -57,16 +58,92 @@ func (e *Engine) LoadConfig(configPaths []string) error {
 	return nil
 }
 
-// Execute 执行模板生成
+// Execute 执行单个模板生成
 func (e *Engine) Execute(tplPath, outputPath string) error {
-	// 读取模板文件
-	content, err := os.ReadFile(filepath.Join(e.workDir, tplPath))
+	tmpl, err := e.loadTemplate(filepath.Base(tplPath), tplPath)
 	if err != nil {
-		return fmt.Errorf("读取模板文件失败: %w", err)
+		return err
+	}
+
+	// 创建输出目录
+	fullOutputPath := filepath.Join(e.workDir, outputPath)
+	outputDir := filepath.Dir(fullOutputPath)
+	if err := os.MkdirAll(outputDir, 0755); err != nil {
+		return fmt.Errorf("创建输出目录失败: %w", err)
+	}
+
+	// 创建输出文件
+	out, err := os.Create(fullOutputPath)
+	if err != nil {
+		return fmt.Errorf("创建输出文件失败: %w", err)
+	}
+	defer out.Close()
+
+	// 执行模板
+	if err := tmpl.Execute(out, e.vars); err != nil {
+		return fmt.Errorf("执行模板失败 (template: %s): %w", tplPath, err)
+	}
+
+	return nil
+}
+
+// ExecuteMultiple 执行多个模板并合并结果
+func (e *Engine) ExecuteMultiple(templates []string, outputPath string, order []int) error {
+	// 创建输出目录
+	fullOutputPath := filepath.Join(e.workDir, outputPath)
+	outputDir := filepath.Dir(fullOutputPath)
+	if err := os.MkdirAll(outputDir, 0755); err != nil {
+		return fmt.Errorf("创建输出目录失败: %w", err)
+	}
+
+	// 创建输出文件
+	out, err := os.Create(fullOutputPath)
+	if err != nil {
+		return fmt.Errorf("创建输出文件失败: %w", err)
+	}
+	defer out.Close()
+
+	// 如果没有指定顺序，按照模板列表顺序执行
+	if order == nil {
+		order = make([]int, len(templates))
+		for i := range order {
+			order[i] = i
+		}
+	}
+
+	// 按顺序执行模板
+	for _, idx := range order {
+		tplPath := templates[idx]
+		tmpl, err := e.loadTemplate(filepath.Base(tplPath), tplPath)
+		if err != nil {
+			return err
+		}
+
+		// 执行模板并写入文件
+		if err := tmpl.Execute(out, e.vars); err != nil {
+			return fmt.Errorf("执行模板失败 (template: %s): %w", tplPath, err)
+		}
+
+		// 在模板之间添加换行符
+		if idx < len(templates)-1 {
+			if _, err := out.Write([]byte("\n")); err != nil {
+				return fmt.Errorf("写入分隔符失败: %w", err)
+			}
+		}
+	}
+
+	return nil
+}
+
+func (e *Engine) loadTemplate(name, path string) (*template.Template, error) {
+	// 读取模板文件
+	content, err := os.ReadFile(filepath.Join(e.workDir, path))
+	if err != nil {
+		return nil, fmt.Errorf("读取模板文件失败: %w", err)
 	}
 
 	// 创建模板
-	tmpl, err := template.New(filepath.Base(tplPath)).
+	tmpl, err := template.New(name).
 		Option("missingkey=error"). // 确保所有变量都已定义
 		Funcs(template.FuncMap{
 			"dict": func(values ...interface{}) (map[string]interface{}, error) {
@@ -83,32 +160,14 @@ func (e *Engine) Execute(tplPath, outputPath string) error {
 				}
 				return dict, nil
 			},
+			"currentYear": func() int {
+				return time.Now().Year()
+			},
 		}).
 		Parse(string(content))
 	if err != nil {
-		return fmt.Errorf("解析模板失败: %w", err)
+		return nil, fmt.Errorf("解析模板失败: %w", err)
 	}
 
-	// 创建输出目录
-	outputDir := filepath.Join(e.workDir, filepath.Dir(outputPath))
-	if err := os.MkdirAll(outputDir, 0755); err != nil {
-		return fmt.Errorf("创建输出目录失败: %w", err)
-	}
-
-	// 创建输出文件
-	out, err := os.Create(filepath.Join(e.workDir, outputPath))
-	if err != nil {
-		return fmt.Errorf("创建输出文件失败: %w", err)
-	}
-	defer out.Close()
-
-	// 调试：打印变量
-	fmt.Printf("Template variables: %+v\n", e.vars)
-
-	// 执行模板
-	if err := tmpl.Execute(out, e.vars); err != nil {
-		return fmt.Errorf("执行模板失败 (template: %s): %w", tplPath, err)
-	}
-
-	return nil
+	return tmpl, nil
 }
