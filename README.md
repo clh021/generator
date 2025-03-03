@@ -50,6 +50,13 @@ func main() {
 }
 ```
 
+### 使用示例
+
+```bash
+cd examples/go-projects
+go run ../../cmd/v1/main.go
+```
+
 ## 错误处理
 
 程序会在以下情况报错：
