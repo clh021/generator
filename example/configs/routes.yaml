@@ -1,0 +1,10 @@
+routes:
+  - path: "/api/v1/users"
+    method: "GET"
+    handler: "ListUsers"
+    description: "List all users"
+  
+  - path: "/api/v1/users/{id}"
+    method: "GET"
+    handler: "GetUser"
+    description: "Get user by ID"

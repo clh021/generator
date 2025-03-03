@@ -1,0 +1,6 @@
+project:
+  name: "example-api"
+  description: "Example REST API Service"
+  version: "1.0.0"
+  author: "Your Name"
+  package: "github.com/yourusername/example-api"

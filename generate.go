@@ -1,0 +1,4 @@
+package generate
+
+func New() {
+}

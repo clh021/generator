@@ -1,0 +1,18 @@
+templates:
+  - path: "templates/main.go.tpl"
+    output: "generated/main.go"
+    dependencies:
+      - "configs/project.yaml"
+      - "configs/routes.yaml"
+  
+  - path: "templates/handler.go.tpl"
+    output: "generated/handler/handler.go"
+    dependencies:
+      - "configs/project.yaml"
+      - "configs/routes.yaml"
+
+  - path: "templates/readme.md.tpl"
+    output: "generated/README.md"
+    dependencies:
+      - "configs/project.yaml"
+      - "configs/routes.yaml"
