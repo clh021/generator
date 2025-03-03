@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"text/template"
 	"time"
 
@@ -14,6 +15,7 @@ import (
 type Engine struct {
 	workDir string
 	vars    map[string]interface{}
+	templates map[string]*template.Template
 }
 
 // New 创建新的模板引擎
@@ -21,6 +23,7 @@ func New(workDir string) *Engine {
 	return &Engine{
 		workDir: workDir,
 		vars:    make(map[string]interface{}),
+		templates: make(map[string]*template.Template),
 	}
 }
 
@@ -31,6 +34,11 @@ func (e *Engine) LoadConfig(configPaths []string) error {
 		data, err := os.ReadFile(fullPath)
 		if err != nil {
 			return fmt.Errorf("读取配置文件 %s 失败: %w", path, err)
+		}
+
+		// 只处理YAML文件
+		if !strings.HasSuffix(path, ".yaml") && !strings.HasSuffix(path, ".yml") {
+			continue
 		}
 
 		var vars map[string]interface{}
@@ -123,19 +131,17 @@ func (e *Engine) ExecuteMultiple(templates []string, outputPath string, order []
 		if err := tmpl.Execute(out, e.vars); err != nil {
 			return fmt.Errorf("执行模板失败 (template: %s): %w", tplPath, err)
 		}
-
-		// 在模板之间添加换行符
-		if idx < len(templates)-1 {
-			if _, err := out.Write([]byte("\n")); err != nil {
-				return fmt.Errorf("写入分隔符失败: %w", err)
-			}
-		}
 	}
 
 	return nil
 }
 
 func (e *Engine) loadTemplate(name, path string) (*template.Template, error) {
+	// 如果模板已经加载过，直接返回
+	if tmpl, ok := e.templates[path]; ok {
+		return tmpl, nil
+	}
+
 	// 读取模板文件
 	content, err := os.ReadFile(filepath.Join(e.workDir, path))
 	if err != nil {
@@ -143,7 +149,7 @@ func (e *Engine) loadTemplate(name, path string) (*template.Template, error) {
 	}
 
 	// 创建模板
-	tmpl, err := template.New(name).
+	tmpl := template.New(name).
 		Option("missingkey=error"). // 确保所有变量都已定义
 		Funcs(template.FuncMap{
 			"dict": func(values ...interface{}) (map[string]interface{}, error) {
@@ -163,11 +169,22 @@ func (e *Engine) loadTemplate(name, path string) (*template.Template, error) {
 			"currentYear": func() int {
 				return time.Now().Year()
 			},
-		}).
-		Parse(string(content))
+			"file": func(filePath string) (string, error) {
+				content, err := os.ReadFile(filepath.Join(filepath.Dir(path), filePath))
+				if err != nil {
+					return "", fmt.Errorf("读取文件失败 %s: %w", filePath, err)
+				}
+				return string(content), nil
+			},
+		})
+
+	// 解析模板
+	tmpl, err = tmpl.Parse(string(content))
 	if err != nil {
 		return nil, fmt.Errorf("解析模板失败: %w", err)
 	}
 
+	// 缓存模板
+	e.templates[path] = tmpl
 	return tmpl, nil
 }
