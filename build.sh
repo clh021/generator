@@ -30,4 +30,4 @@ fi
 mkdir -p dist/bin/output
 
 # 运行 astgen
-dist/bin/astgen
+# dist/bin/astgen

@@ -25,24 +25,29 @@ func (g *Generator) Generate(workDir string) error {
 	// 创建模板引擎
 	engine := template.New(workDir)
 
-	// 创建模板名称到路径的映射
+	// 创建模板名称到路径、依赖、以及配置文件的映射
 	templatePaths := make(map[string]string)
 	templateDeps := make(map[string][]string)
+	tplConfigs := make(map[string]string)
 	for _, tpl := range cfg.Templates {
 		templatePaths[tpl.Name] = tpl.Path
 		templateDeps[tpl.Name] = tpl.Dependencies
+		tplConfigs[tpl.Name] = tpl.Config
 	}
 
-	// 处理每个输出配置
 	for _, output := range cfg.Outputs {
 		// 收集所有依赖的配置文件
 		allDeps := make(map[string]struct{})
 		for _, tplName := range output.Templates {
+			// 加入模板依赖
 			for _, dep := range templateDeps[tplName] {
 				allDeps[dep] = struct{}{}
 			}
+			// 如果模板指定了额外的配置文件，则加入
+			if configFile, ok := tplConfigs[tplName]; ok && configFile != "" {
+				allDeps[configFile] = struct{}{}
+			}
 		}
-
 		// 转换为切片
 		deps := make([]string, 0, len(allDeps))
 		for dep := range allDeps {
@@ -66,13 +71,18 @@ func (g *Generator) Generate(workDir string) error {
 
 		// 执行模板生成
 		if err := engine.ExecuteMultiple(tplPaths, output.Path, output.Order); err != nil {
-			return err
+			return err;
 		}
 	}
 
-	// 处理单个模板配置（向后兼容）
 	for _, tpl := range cfg.Templates {
 		if tpl.Output != "" {
+			// 如果存在额外的模板配置文件，则加载
+			if tpl.Config != "" {
+				if err := engine.LoadConfig([]string{tpl.Config}); err != nil {
+					return err
+				}
+			}
 			// 加载依赖的配置文件
 			if err := engine.LoadConfig(tpl.Dependencies); err != nil {
 				return err

@@ -16,10 +16,11 @@ type Config struct {
 
 // Template 模板配置
 type Template struct {
-	Name         string   `yaml:"name"`           // 模板名称
-	Path         string   `yaml:"path"`           // 模板文件路径
-	Dependencies []string `yaml:"dependencies"`   // 依赖的配置文件列表
-	Output       string   `yaml:"output,omitempty"` // 向后兼容：直接输出路径
+    Name         string   `yaml:"name"`           // 模板名称
+    Path         string   `yaml:"path"`           // 模板文件路径
+    Dependencies []string `yaml:"dependencies"`   // 依赖的配置文件列表
+    Output       string   `yaml:"output,omitempty"` // 向后兼容：直接输出路径
+    Config       string   `yaml:"config,omitempty"`   // 新增：配置文件路径（例如 fields 配置）
 }
 
 // Output 输出配置
