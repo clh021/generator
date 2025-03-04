@@ -13,5 +13,6 @@ cd "$(dirname "$0")/"
 go mod tidy
 go mod vendor
 
-cd ./examples/element-book/
+# 运行 antdv-dynamic 示例
+cd ./examples/antdv-dynamic/
 go run ../../cmd/v1/main.go

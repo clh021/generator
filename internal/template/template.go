@@ -176,6 +176,12 @@ func (e *Engine) loadTemplate(name, path string) (*template.Template, error) {
 				}
 				return string(content), nil
 			},
+			"default": func(value, defaultValue interface{}) interface{} {
+				if value == nil || value == "" {
+					return defaultValue
+				}
+				return value
+			},
 		})
 
 	// 解析模板
