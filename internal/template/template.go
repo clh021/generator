@@ -184,7 +184,42 @@ func (e *Engine) loadTemplate(name, path string) (*template.Template, error) {
 			},
 		})
 
-	// 解析模板
+	// load all templates under the same folder, make sub-templates available
+	// 只需要加载当前文件目录下的子模板
+	dir := filepath.Dir(filepath.Join(e.workDir, path))
+	err = filepath.Walk(dir, func(subPath string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			return nil
+		}
+
+		//跳过当前处理的主模板文件
+		if subPath == filepath.Join(e.workDir, path) {
+			return nil
+		}
+
+		// 所有子模板都去除后缀
+		subName := strings.TrimSuffix(filepath.Base(subPath), filepath.Ext(subPath))
+
+		//使用 subName(文件名) 作为模板名称，因为我们使用 `{{ template "index.search.template.tpl" . }}` 来引用子模板
+		subTemplate := tmpl.New(subName)
+		subContent, err := os.ReadFile(subPath)
+		if err != nil {
+			return fmt.Errorf("failed to read template file: %w", err)
+		}
+		_, err = subTemplate.Parse(string(subContent))
+		if err != nil {
+			return fmt.Errorf("failed to parse template: %w", err)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// 解析主模板
 	tmpl, err = tmpl.Parse(string(content))
 	if err != nil {
 		return nil, fmt.Errorf("解析模板失败: %w", err)

@@ -13,17 +13,17 @@ cd "$(dirname "$0")/"
 go mod tidy
 go mod vendor
 
-# 运行 antdv-book-fields 示例
-echo "正在运行 antdv-book-fields 示例..."
-cd ./examples/antdv-book-fields/
+# 运行 element-book-fields 示例
+echo "正在运行 element-book-fields 示例..."
+cd ./examples/element-book-fields/
 go run ../../cmd/v1/main.go
 
 # 检查生成结果
 if [ $? -eq 0 ]; then
     echo "✅ 生成成功！"
-    echo "生成的文件位于：examples/antdv-book-fields/src/"
+    echo "生成的文件位于：examples/element-book-fields/src/"
     echo "你可以使用以下命令查看生成的文件："
-    echo "  ls -l examples/antdv-book-fields/src/"
+    echo "  ls -l examples/element-book-fields/src/"
 else
     echo "❌ 生成失败，请检查错误信息"
     exit 1
