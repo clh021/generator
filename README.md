@@ -8,7 +8,40 @@
 - 详细的错误报告
 - 支持作为库引入使用
 
-## 配置文件格式
+## 普通使用者
+
+###参的目录树结构
+
+> 关键是在当前目录下能找到 `generator.yaml` 配置文件
+
+```
+project/
+├── generator.yaml  # 配置文件
+├── templates/      # 模板文件目录
+│   └── main.tpl
+└── generated/      # 生成的代码目录
+```
+
+### 命令行使用
+
+```bash
+# 在当前目录执行生成
+generator
+
+# 指定工作目录
+generator -dir /path/to/workdir
+```
+
+### 使用示例
+
+```bash
+cd examples/go-projects
+go run ../../cmd/v1/main.go
+```
+
+## 开发者
+
+### 配置文件格式
 
 配置文件使用 YAML 格式，需要命名为 `generator.yaml`，示例：
 
@@ -25,18 +58,6 @@ templates:
       - "configs/sub.yaml"
 ```
 
-## 使用方法
-
-### 命令行使用
-
-```bash
-# 在当前目录执行生成
-generator
-
-# 指定工作目录
-generator -dir /path/to/workdir
-```
-
 ### 作为库使用
 
 ```go
@@ -48,13 +69,6 @@ func main() {
         log.Fatal(err)
     }
 }
-```
-
-### 使用示例
-
-```bash
-cd examples/go-projects
-go run ../../cmd/v1/main.go
 ```
 
 ## 错误处理

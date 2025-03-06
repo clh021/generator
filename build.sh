@@ -18,7 +18,7 @@ go mod tidy
 go mod vendor
 
 # 编译项目，添加更多的编译信息
-go build -v -o dist/bin/gcode ./cmd/v1/main.go
+go build -v -o dist/bin/gen ./cmd/v1/main.go
 
 # 检查编译是否成功
 if [ $? -ne 0 ]; then
@@ -27,7 +27,7 @@ if [ $? -ne 0 ]; then
 fi
 
 # 确保输出目录存在
-mkdir -p dist/bin/output
+mkdir -p dist/bin/
 
 # 运行 astgen
 # dist/bin/astgen
