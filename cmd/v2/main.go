@@ -12,15 +12,7 @@ import (
 )
 
 // convertJSONToYAML 将 JSON 文件转换为 YAML 文件。
-func convertJSONToYAML(jsonFilePath string) error {
-	// 根据 JSON 文件路径构建 YAML 文件路径
-	ext := filepath.Ext(jsonFilePath)
-	if strings.ToLower(ext) != ".json" {
-		return fmt.Errorf("输入的文件不是 JSON 文件，%s", jsonFilePath)
-	}
-
-	yamlFilePath := strings.TrimSuffix(jsonFilePath, ext) + ".yaml"
-
+func convertJSONToYAML(jsonFilePath, yamlOutputPath string) error {
 	// 读取 JSON 文件
 	jsonFile, err := os.Open(jsonFilePath)
 	if err != nil {
@@ -48,25 +40,34 @@ func convertJSONToYAML(jsonFilePath string) error {
 	}
 
 	// 将 YAML 数据写入文件
-	err = os.WriteFile(yamlFilePath, yamlData, 0644) // 使用 os.WriteFile 替代 ioutil.WriteFile
+	err = os.WriteFile(yamlOutputPath, yamlData, 0644) // 使用 os.WriteFile 替代 ioutil.WriteFile
 	if err != nil {
 		return fmt.Errorf("写入 YAML 文件时出错: %w", err)
 	}
 
-	fmt.Printf("成功将 %s 转换为 %s\n", jsonFilePath, yamlFilePath)
+	fmt.Printf("成功将 %s 转换为 %s\n", jsonFilePath, yamlOutputPath)
 	return nil
 }
 
 func main() {
-	if len(os.Args) < 2 {
-		fmt.Println("错误：未提供 JSON 文件路径")
-		fmt.Println("用法：", os.Args[0], "<json文件路径>")
+	// 检查是否通过命令行参数提供了 JSON 文件路径和 YAML 输出路径
+	if len(os.Args) < 3 {
+		fmt.Println("错误：未提供 JSON 文件路径或 YAML 输出路径")
+		fmt.Println("用法：", os.Args[0], "<json文件路径> <yaml输出路径>")
 		fmt.Println("功能：将指定的 JSON 文件转换为 YAML 文件")
 		return
 	}
 
 	jsonFilePath := os.Args[1]
-	err := convertJSONToYAML(jsonFilePath)
+	yamlOutputPath := os.Args[2]
+
+	// 如果 yamlOutputPath 不带后缀，则识别为目录，并在目录下生成同名 YAML 文件
+	if filepath.Ext(yamlOutputPath) == "" {
+		baseName := filepath.Base(jsonFilePath)
+		yamlOutputPath = filepath.Join(yamlOutputPath, strings.TrimSuffix(baseName, filepath.Ext(baseName))+".yaml")
+	}
+
+	err := convertJSONToYAML(jsonFilePath, yamlOutputPath)
 	if err != nil {
 		fmt.Println("转换 JSON 到 YAML 时出错:", err)
 		return
