@@ -39,6 +39,14 @@ func convertJSONToYAML(jsonFilePath, yamlOutputPath string) error {
 		return fmt.Errorf("序列化为 YAML 时出错: %w", err)
 	}
 
+	// 检查目标路径的父目录是否存在，如果不存在则创建
+	parentDir := filepath.Dir(yamlOutputPath)
+	if _, err := os.Stat(parentDir); os.IsNotExist(err) {
+		if err := os.MkdirAll(parentDir, 0755); err != nil {
+			return fmt.Errorf("创建目录 %s 时出错: %w", parentDir, err)
+		}
+	}
+
 	// 将 YAML 数据写入文件
 	err = os.WriteFile(yamlOutputPath, yamlData, 0644) // 使用 os.WriteFile 替代 ioutil.WriteFile
 	if err != nil {
