@@ -13,10 +13,11 @@ import (
 
 func main() {
     workDir := flag.String("dir", ".", "工作目录路径")
-    templateDir := flag.String("template", "", "模板目录路径")
-    configDir := flag.String("config", "", "配置目录路径")
-    outputDir := flag.String("output", "", "输出目录路径")
+    templateDir := flag.String("template", "templates", "模板目录路径")
+    configDir := flag.String("config", "configs", "配置目录路径")
+    outputDir := flag.String("output", "generated", "输出目录路径")
     quickStart := flag.Bool("quickstart", false, "生成快速开始示例")
+
     flag.Parse()
 
     if *quickStart {
@@ -25,6 +26,7 @@ func main() {
         }
         return
     }
+
     // 获取工作目录的绝对路径
     absPath, err := os.Getwd()
     if err != nil {
@@ -35,27 +37,12 @@ func main() {
         absPath = *workDir
     }
 
-    // 加载配置
-    cfg, err := config.LoadConfig(absPath)
-    if err != nil {
-        log.Fatalf("加载配置失败: %v", err)
+    // 创建配置
+    cfg := &config.Config{
+        TemplateDir: filepath.Join(absPath, *templateDir),
+        ConfigDir:   filepath.Join(absPath, *configDir),
+        OutputDir:   filepath.Join(absPath, *outputDir),
     }
-
-    // 如果提供了命令行参数，覆盖配置
-    if *templateDir != "" {
-        cfg.TemplateDir = *templateDir
-    }
-    if *configDir != "" {
-        cfg.ConfigDir = *configDir
-    }
-    if *outputDir != "" {
-        cfg.OutputDir = *outputDir
-    }
-
-    // 确保所有路径都是绝对路径
-    cfg.TemplateDir = filepath.Join(absPath, cfg.TemplateDir)
-    cfg.ConfigDir = filepath.Join(absPath, cfg.ConfigDir)
-    cfg.OutputDir = filepath.Join(absPath, cfg.OutputDir)
 
     gen := generate.NewGenerator()
     if err := gen.Generate(cfg); err != nil {
