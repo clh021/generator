@@ -13,9 +13,9 @@ import (
 
 func main() {
 	workDir := flag.String("dir", ".", "工作目录路径")
-	templateDir := flag.String("template", "gen_templates", "模板目录路径")
-	configDir := flag.String("config", "gen_configs", "配置目录路径")
-	outputDir := flag.String("output", "gen_output", "输出目录路径")
+	templateDir := flag.String("template", ".gen_templates", "模板目录路径")
+	variablesDir := flag.String("variables", ".gen_variables", "变量目录路径")
+	outputDir := flag.String("output", ".gen_output", "输出目录路径")
 	quickStart := flag.Bool("quickstart", false, "生成快速开始示例")
 
 	flag.Parse()
@@ -37,19 +37,19 @@ func main() {
 		absPath = *workDir
 	}
 
-	// 检查默认配置目录是否存在
-	defaultConfigPath := filepath.Join(absPath, *configDir)
-	if _, err := os.Stat(defaultConfigPath); os.IsNotExist(err) && flag.NFlag() == 0 {
-		fmt.Println("未找到默认配置目录，且未提供任何参数。")
+	// 检查默认变量目录是否存在
+	defaultVariablesPath := filepath.Join(absPath, *variablesDir)
+	if _, err := os.Stat(defaultVariablesPath); os.IsNotExist(err) && flag.NFlag() == 0 {
+		fmt.Println("未找到默认变量目录，且未提供任何参数。")
 		printHelp()
 		os.Exit(1)
 	}
 
 	// 创建配置
 	cfg := &config.Config{
-		TemplateDir: filepath.Join(absPath, *templateDir),
-		ConfigDir:   filepath.Join(absPath, *configDir),
-		OutputDir:   filepath.Join(absPath, *outputDir),
+		TemplateDir:  filepath.Join(absPath, *templateDir),
+		VariablesDir: filepath.Join(absPath, *variablesDir),
+		OutputDir:    filepath.Join(absPath, *outputDir),
 	}
 
 	gen := generate.NewGenerator()
@@ -67,19 +67,23 @@ func printHelp() {
 	fmt.Println("\n示例:")
 	fmt.Println("  generator -quickstart                # 生成快速开始示例")
 	fmt.Println("  generator -dir /path/to/workdir      # 指定工作目录")
-	fmt.Println("  generator -template /path/to/templates -config /path/to/configs -output /path/to/output")
+	fmt.Println("  generator -template /path/to/templates -variables /path/to/variables -output /path/to/output") // 修改这里//
+
 }
 
 func generateQuickStartExample() error {
 	files := map[string]string{
-		"generator.yaml": `templates:
-  - path: "templates/example.tpl"
-    output: "generated/example.txt"
-    dependencies:
-      - "configs/example.yaml"`,
-		"configs/example.yaml": `greeting: "Hello"
+		".gen_config.yaml": `config:
+  template_dir: ".gen_templates"
+  variables_dir: ".gen_variables"
+  output_dir: ".gen_output"
+templates:
+  - path: "example.tpl"
+    output: "example.txt"
+    variables: "example.yaml"`,
+		".gen_variables/example.yaml": `greeting: "Hello"
 name: "World"`,
-		"templates/example.tpl": `{{ .greeting }}, {{ .name }}!`,
+		".gen_templates/example.tpl": `{{ .greeting }}, {{ .name }}!`,
 	}
 
 	fmt.Println("将要生成以下文件:")
@@ -106,6 +110,18 @@ name: "World"`,
 		}
 	}
 
-	fmt.Println("快速开始示例已生成。请运行 'generator' 命令来测试。")
+	fmt.Println("\n快速开始示例已生成。")
+	fmt.Println("\n使用说明:")
+	fmt.Println("1. 这个示例使用了默认的目录结构:")
+	fmt.Println("   - 模板目录: .gen_templates")
+	fmt.Println("   - 变量目录: .gen_variables")
+	fmt.Println("   - 输出目录: .gen_output (将在生成时创建)")
+	fmt.Println("2. 您可以直接运行 'generator' 命令来测试，无需额外参数。")
+	fmt.Println("3. 如果您想自定义配置，可以修改 .gen_config.yaml 文件。")
+	fmt.Println("4. 如果您不需要自定义配置，可以安全地删除 .gen_config.yaml 文件。")
+	fmt.Println("5. 你也可以通过命令行使用以下参数进行配置:")
+	fmt.Println("   generator -template <模板目录> -variables <变量目录> -output <输出目录>")
+	fmt.Println("\n示例输出将生成在 .gen_output/example.txt")
+
 	return nil
 }
