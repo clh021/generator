@@ -76,14 +76,10 @@ func generateQuickStartExample() error {
 		".gen_config.yaml": `config:
   template_dir: ".gen_templates"
   variables_dir: ".gen_variables"
-  output_dir: ".gen_output"
-templates:
-  - path: "example.tpl"
-    output: "example.txt"
-    variables: "example.yaml"`,
+  output_dir: ".gen_output"`,
 		".gen_variables/example.yaml": `greeting: "Hello"
 name: "World"`,
-		".gen_templates/example.tpl": `{{ .greeting }}, {{ .name }}!`,
+		".gen_templates/example.txt.tpl": `{{ .greeting }}, {{ .name }}!`,
 	}
 
 	fmt.Println("将要生成以下文件:")
