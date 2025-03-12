@@ -67,7 +67,7 @@ func printHelp() {
 	fmt.Println("\n示例:")
 	fmt.Println("  generator -quickstart                # 生成快速开始示例")
 	fmt.Println("  generator -dir /path/to/workdir      # 指定工作目录")
-	fmt.Println("  generator -template /path/to/templates -variables /path/to/variables -output /path/to/output") // 修改这里//
+	fmt.Println("  generator -template /path/to/templates -variables /path/to/variables -output /path/to/output") //
 
 }
 

@@ -12,30 +12,30 @@ import (
 
 type Engine struct {
 	templateDir  string
-	variablesDir string // 修改这里
+	variablesDir string
 	outputDir    string
 	vars         map[string]interface{}
 }
 
-func New(templateDir, variablesDir, outputDir string) *Engine { // 修改这里
+func New(templateDir, variablesDir, outputDir string) *Engine {
 	return &Engine{
 		templateDir:  templateDir,
-		variablesDir: variablesDir, // 修改这里
+		variablesDir: variablesDir,
 		outputDir:    outputDir,
 		vars:         make(map[string]interface{}),
 	}
 }
 
-func (e *Engine) LoadVariables(variableFiles []string) error { // 修改这里
+func (e *Engine) LoadVariables(variableFiles []string) error {
 	for _, path := range variableFiles {
 		data, err := os.ReadFile(path)
 		if err != nil {
-			return fmt.Errorf("读取变量文件 %s 失败: %w", path, err) // 修改这里
+			return fmt.Errorf("读取变量文件 %s 失败: %w", path, err)
 		}
 
 		var vars map[string]interface{}
 		if err := yaml.Unmarshal(data, &vars); err != nil {
-			return fmt.Errorf("解析变量文件 %s 失败: %w", path, err) // 修改这里
+			return fmt.Errorf("解析变量文件 %s 失败: %w", path, err)
 		}
 
 		// 合并变量
