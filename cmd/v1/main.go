@@ -54,7 +54,7 @@ func main() {
 
 	gen := generate.NewGenerator()
 	if err := gen.Generate(cfg); err != nil {
-		log.Fatalf("生成失败: %v", err)
+		log.Fatalf("生成失败: %+v", err)
 	}
 
 	log.Println("生成完成")
