@@ -47,10 +47,21 @@ func main() {
 
 	// 创建配置
 	cfg := &config.Config{
-		TemplateDir:  filepath.Join(absPath, *templateDir),
-		VariablesDir: filepath.Join(absPath, *variablesDir),
-		OutputDir:    filepath.Join(absPath, *outputDir),
+		TemplateDir:  *templateDir,
+		VariablesDir: *variablesDir,
+		OutputDir:    *outputDir,
 	}
+
+	// 如果提供了工作目录，则将路径调整为相对于工作目录
+	if *workDir != "." {
+		cfg.TemplateDir = filepath.Join(*workDir, *templateDir)
+		cfg.VariablesDir = filepath.Join(*workDir, *variablesDir)
+		cfg.OutputDir = filepath.Join(*workDir, *outputDir)
+	}
+
+	// 打印配置信息以便调试
+	log.Printf("使用的配置：\n模板目录: %s\n变量目录: %s\n输出目录: %s",
+		cfg.TemplateDir, cfg.VariablesDir, cfg.OutputDir)
 
 	gen := generate.NewGenerator()
 	if err := gen.Generate(cfg); err != nil {

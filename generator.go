@@ -20,6 +20,21 @@ func NewGenerator() *Generator {
 
 // Generate 执行生成过程
 func (g *Generator) Generate(cfg *config.Config) error {
+	// 确保所有路径都是绝对路径
+	var err error
+	cfg.TemplateDir, err = filepath.Abs(cfg.TemplateDir)
+	if err != nil {
+		return errors.Wrapf(err, "无法获取模板目录的绝对路径: %s", cfg.TemplateDir)
+	}
+	cfg.VariablesDir, err = filepath.Abs(cfg.VariablesDir)
+	if err != nil {
+		return errors.Wrapf(err, "无法获取变量目录的绝对路径: %s", cfg.VariablesDir)
+	}
+	cfg.OutputDir, err = filepath.Abs(cfg.OutputDir)
+	if err != nil {
+		return errors.Wrapf(err, "无法获取输出目录的绝对路径: %s", cfg.OutputDir)
+	}
+
 	// 检查模板目录是否存在
 	if _, err := os.Stat(cfg.TemplateDir); os.IsNotExist(err) {
 		return errors.Wrapf(err, "模板目录不存在: %s", cfg.TemplateDir)
