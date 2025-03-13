@@ -6,17 +6,22 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/pkg/errors"
 )
 
 // Generator 代码生成器
-type Generator struct{}
+type Generator struct {
+	variables map[string]interface{}
+}
 
 // NewGenerator 创建新的生成器实例
 func NewGenerator() *Generator {
-	return &Generator{}
+	return &Generator{
+		variables: make(map[string]interface{}),
+	}
 }
 
 // Generate 执行生成过程
@@ -65,6 +70,9 @@ func (g *Generator) Generate(cfg *config.Config) error {
 		return errors.Wrap(err, "加载变量失败")
 	}
 
+	// 获取变量供路径处理使用
+	g.variables = engine.GetVariables()
+
 	// 遍历模板目录
 	err = filepath.Walk(cfg.TemplateDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -80,7 +88,20 @@ func (g *Generator) Generate(cfg *config.Config) error {
 			return errors.Wrap(err, "获取相对路径失败")
 		}
 
-		outputPath := filepath.Join(cfg.OutputDir, removeTemplateExtension(relativePath))
+		// 移除模板扩展名
+		relPathWithoutExt := removeTemplateExtension(relativePath)
+
+		// 构建初始输出路径
+		outputPath := filepath.Join(cfg.OutputDir, relPathWithoutExt)
+
+		// 处理路径中的变量
+		processedPath, err := g.processTemplatePath(outputPath, g.variables)
+		if err != nil {
+			log.Printf("警告: 处理目标路径时遇到错误: %v. 使用原始路径", err)
+			// 打印警告，但不终断流程
+		} else {
+			outputPath = processedPath
+		}
 
 		log.Printf("正在处理模板: %s", path)
 		log.Printf("目标输出路径: %s", outputPath)
@@ -117,4 +138,41 @@ func loadVariableFiles(variablesDir string) ([]string, error) {
 // removeTemplateExtension 移除模板文件的扩展名
 func removeTemplateExtension(path string) string {
 	return strings.TrimSuffix(path, ".tpl")
+}
+
+// processTemplatePath 处理路径中的变量引用
+// 查找形如 __variable__ 的模板变量并尝试替换
+// 如果变量不存在，则输出警告并保留原始字符串
+func (g *Generator) processTemplatePath(path string, variables map[string]interface{}) (string, error) {
+	re := regexp.MustCompile(`__([^_]+)__`)
+	matches := re.FindAllStringSubmatch(path, -1)
+
+	result := path
+	for _, match := range matches {
+		if len(match) < 2 {
+			continue
+		}
+
+		fullMatch := match[0] // __variable__
+		varName := match[1]   // variable
+
+		// 查找变量值
+		value, ok := variables[varName]
+		if !ok {
+			log.Printf("警告: 在路径 %s 中找不到变量 %s，保留原始字符串", path, varName)
+			continue
+		}
+
+		// 将变量值转换为字符串并替换
+		strValue, ok := value.(string)
+		if !ok {
+			log.Printf("警告: 在路径 %s 中变量 %s 的值不是字符串，保留原始字符串", path, varName)
+			continue
+		}
+
+		result = strings.Replace(result, fullMatch, strValue, -1)
+	}
+
+	// 规范化路径
+	return filepath.Clean(result), nil
 }

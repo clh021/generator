@@ -171,3 +171,8 @@ func (e *Engine) funcMap() template.FuncMap {
 		"ucfirst": ucfirst,
 	}
 }
+
+// GetVariables 返回模板引擎中加载的所有变量
+func (e *Engine) GetVariables() map[string]interface{} {
+	return e.vars
+}
