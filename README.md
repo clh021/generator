@@ -7,6 +7,8 @@
 - 模板依赖管理
 - 详细的错误报告
 - 支持作为库引入使用
+- 内置字符串处理函数
+- 支持输出路径中的变量替换
 
 ## 普通使用者
 
@@ -86,6 +88,41 @@ func main() {
 }
 ```
 
+## 模板功能
+
+### 字符串处理函数
+
+模板生成器内置了以下字符串处理函数，可以在模板中直接使用：
+
+- `lcfirst`：将字符串的第一个字符转换为小写
+- `ucfirst`：将字符串的第一个字符转换为大写
+
+使用示例：
+
+```go
+// 在模板中使用
+{{lcfirst "UserName"}} // 输出: "userName"
+{{ucfirst "userName"}} // 输出: "UserName"
+```
+
+### 路径中的变量替换
+
+输出路径支持使用模板变量，格式为 `__variable__`，生成器会自动将其替换为配置文件中对应的值。
+
+示例配置：
+
+```yaml
+templates:
+  - path: "templates/entity.tpl"
+    output: "generated/__EntityName__/__EntityName__Entity.go"
+    dependencies:
+      - "configs/entity.yaml"  # 包含 EntityName: "User" 的配置
+```
+
+上述配置会生成文件：`generated/User/UserEntity.go`
+
+如果变量不存在，则保持原样输出。非字符串类型的变量会被转换为字符串后使用。
+
 ## 错误处理
 
 程序会在以下情况报错：
@@ -110,7 +147,15 @@ go test ./...
 
 ```bash
 go test ./internal/template
+go test ./internal/generator
 ```
+
+项目包含完整的单元测试，特别是 `generator_test.go` 文件测试了核心功能，包括：
+- 字符串处理函数（lcfirst、ucfirst）的正确性
+- 路径模板变量替换功能（processTemplatePath）
+- 各种边界情况的处理，如变量不存在、非字符串变量等
+
+开发新功能时，请确保编写相应的单元测试并保持测试覆盖率。
 
 ## 将来支持的特性
 
