@@ -3,6 +3,8 @@ package template
 import (
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 )
@@ -94,6 +96,137 @@ func TestExecute(t *testing.T) {
 	expectedContent := "Hello, World!"
 	if string(content) != expectedContent {
 		t.Errorf("Expected content to be '%s', got '%s'", expectedContent, string(content))
+	}
+}
+
+func TestExecuteWithFunctions(t *testing.T) {
+	// 创建临时目录
+	tempDir, err := os.MkdirTemp("", "template_functions_test")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// 创建测试模板文件，包含条件语句、循环和内置函数
+	templateContent := []byte(`
+Name: {{.Name}}
+Lowercase first: {{lcfirst .Name}}
+Uppercase first: {{ucfirst .Title}}
+{{if .ShowGreeting}}Greeting: Hello!{{else}}No greeting{{end}}
+{{if .Items}}Items:{{range .Items}}
+- {{.}}{{end}}
+{{else}}No items{{end}}
+Current Year: {{currentYear}}
+Default value: {{default .MissingValue "default"}}
+`)
+	templatePath := filepath.Join(tempDir, "advanced.tpl")
+	if err := os.WriteFile(templatePath, templateContent, 0644); err != nil {
+		t.Fatalf("Failed to write template file: %v", err)
+	}
+
+	// 创建输出目录
+	outputDir := filepath.Join(tempDir, "output")
+	if err := os.Mkdir(outputDir, 0755); err != nil {
+		t.Fatalf("Failed to create output dir: %v", err)
+	}
+
+	e := New(tempDir, "/tmp/config", outputDir)
+	e.vars = map[string]interface{}{
+		"Name":         "World",
+		"Title":        "project",
+		"ShowGreeting": true,
+		"Items":        []string{"Item1", "Item2", "Item3"},
+		"MissingValue": "",
+	}
+
+	outputPath := filepath.Join(outputDir, "advanced_result.txt")
+	err = e.Execute(templatePath, outputPath)
+	if err != nil {
+		t.Fatalf("Execute failed: %v", err)
+	}
+
+	// 检查输出文件内容
+	content, err := os.ReadFile(outputPath)
+	if err != nil {
+		t.Fatalf("Failed to read output file: %v", err)
+	}
+
+	// 验证输出内容包含预期的模板函数处理结果
+	expectedParts := []string{
+		"Name: World",
+		"Lowercase first: world",
+		"Uppercase first: Project",
+		"Greeting: Hello!",
+		"Items:",
+		"- Item1",
+		"- Item2",
+		"- Item3",
+		"Current Year: " + strconv.Itoa(time.Now().Year()),
+		"Default value: default",
+	}
+
+	for _, part := range expectedParts {
+		if !strings.Contains(string(content), part) {
+			t.Errorf("Expected output to contain '%s', but it doesn't.\nOutput: %s", part, string(content))
+		}
+	}
+}
+
+func TestLcfirst(t *testing.T) {
+	e := New("/tmp/template", "/tmp/config", "/tmp/output")
+	funcMap := e.funcMap()
+	lcfirstFunc := funcMap["lcfirst"].(func(string) string)
+
+	testCases := []struct {
+		input    string
+		expected string
+	}{
+		{"", ""},                       // 空字符串
+		{"A", "a"},                     // 单字符
+		{"ABC", "aBC"},                 // 普通字符串
+		{"Hello World", "hello World"}, // 带空格的字符串
+		{"Über", "über"},               // 非ASCII字符
+		{"123", "123"},                 // 数字开头
+		{"_test", "_test"},             // 特殊字符开头
+		{" space", " space"},           // 空格开头
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.input, func(t *testing.T) {
+			result := lcfirstFunc(tc.input)
+			if result != tc.expected {
+				t.Errorf("lcfirst(%q) = %q, expected %q", tc.input, result, tc.expected)
+			}
+		})
+	}
+}
+
+func TestUcfirst(t *testing.T) {
+	e := New("/tmp/template", "/tmp/config", "/tmp/output")
+	funcMap := e.funcMap()
+	ucfirstFunc := funcMap["ucfirst"].(func(string) string)
+
+	testCases := []struct {
+		input    string
+		expected string
+	}{
+		{"", ""},                       // 空字符串
+		{"a", "A"},                     // 单字符
+		{"abc", "Abc"},                 // 普通字符串
+		{"hello world", "Hello world"}, // 带空格的字符串
+		{"über", "Über"},               // 非ASCII字符
+		{"123", "123"},                 // 数字开头
+		{"_test", "_test"},             // 特殊字符开头
+		{" space", " space"},           // 空格开头
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.input, func(t *testing.T) {
+			result := ucfirstFunc(tc.input)
+			if result != tc.expected {
+				t.Errorf("ucfirst(%q) = %q, expected %q", tc.input, result, tc.expected)
+			}
+		})
 	}
 }
 
