@@ -3,6 +3,7 @@ package generate
 import (
 	"generate/internal/config"
 	"generate/internal/template"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -81,6 +82,9 @@ func (g *Generator) Generate(cfg *config.Config) error {
 
 		outputPath := filepath.Join(cfg.OutputDir, removeTemplateExtension(relativePath))
 
+		log.Printf("正在处理模板: %s", path)
+		log.Printf("目标输出路径: %s", outputPath)
+
 		if err := engine.Execute(path, outputPath); err != nil {
 			return errors.Wrapf(err, "执行模板失败 (%s)", path)
 		}
@@ -97,10 +101,16 @@ func (g *Generator) Generate(cfg *config.Config) error {
 
 // loadVariableFiles 加载变量目录下的所有 YAML 文件
 func loadVariableFiles(variablesDir string) ([]string, error) {
-	files, err := filepath.Glob(filepath.Join(variablesDir, "*.yaml"))
+	var files []string
+	yamlFiles, err := filepath.Glob(filepath.Join(variablesDir, "*.yaml"))
 	if err != nil {
-		return nil, errors.Wrap(err, "查找变量文件失败")
+		return nil, errors.Wrap(err, "查找 *.yaml 变量文件失败")
 	}
+	ymlFiles, err := filepath.Glob(filepath.Join(variablesDir, "*.yml"))
+	if err != nil {
+		return nil, errors.Wrap(err, "查找 *.yml 变量文件失败")
+	}
+	files = append(yamlFiles, ymlFiles...)
 	return files, nil
 }
 

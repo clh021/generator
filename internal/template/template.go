@@ -2,6 +2,7 @@ package template
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"text/template"
@@ -79,6 +80,13 @@ func (e *Engine) Execute(tplPath, outputPath string) error {
 	defer out.Close()
 
 	// 执行模板
+	log.Printf(" - 正在执行模板 %s", tplPath)
+	log.Printf(" - 目标输出文件: %s", outputPath)
+	log.Printf("传递给模板的变量:")
+	for k, v := range e.vars {
+		log.Printf("  %s = %v", k, v)
+	}
+
 	if err := tmpl.Execute(out, e.vars); err != nil {
 		return fmt.Errorf("执行模板失败 (template: %s): %w", tplPath, err)
 	}
