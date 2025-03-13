@@ -94,12 +94,29 @@ format_files() {
 if [ $# -gt 0 ]; then
     TARGET_PATH="$1"
     if [ -d "$TARGET_PATH" ]; then
+        # 如果是目录，格式化整个目录
         [ "$FORMAT_BACKEND" = true ] && format_backend_files "$TARGET_PATH"
         [ "$FORMAT_FRONTEND" = true ] && format_frontend_files "$TARGET_PATH"
-        echo "格式化完成！"
+        echo "目录格式化完成！"
+        exit 0
+    elif [ -f "$TARGET_PATH" ]; then
+        # 如果是文件，根据文件类型进行格式化
+        if [[ "$TARGET_PATH" == *.go ]]; then
+            [ "$FORMAT_BACKEND" = true ] && gofmt -w "$TARGET_PATH"
+            echo "Go 文件格式化完成：$TARGET_PATH"
+        elif [[ "$TARGET_PATH" =~ \.(js|jsx|ts|vue|tsx|json)$ ]]; then
+            if [ "$FORMAT_FRONTEND" = true ] && [ -f "$PRETTIER_BIN" ]; then
+                "$PRETTIER_BIN" --write "$TARGET_PATH"
+                echo "前端文件格式化完成：$TARGET_PATH"
+            else
+                echo "前端格式化未启用或找不到 prettier，跳过格式化：$TARGET_PATH"
+            fi
+        else
+            echo "不支持的文件类型：$TARGET_PATH"
+        fi
         exit 0
     else
-        echo "提供的路径 $TARGET_PATH 不存在。"
+        echo "提供的路径 $TARGET_PATH 不存在或不是有效的文件/目录。"
         exit 1
     fi
 fi
