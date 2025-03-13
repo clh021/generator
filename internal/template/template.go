@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"text/template"
 	"time"
+	"unicode"
 
 	"gopkg.in/yaml.v3"
 )
@@ -85,6 +86,36 @@ func (e *Engine) Execute(tplPath, outputPath string) error {
 	return nil
 }
 
+// lcfirst converts the first character of a string to lowercase.
+// If the string is empty, it returns an empty string.
+//
+// Example usage in templates:
+//
+//	{{ lcfirst "UserName" }} -> "userName"
+func lcfirst(s string) string {
+	if s == "" {
+		return ""
+	}
+	r := []rune(s)
+	r[0] = unicode.ToLower(r[0])
+	return string(r)
+}
+
+// ucfirst converts the first character of a string to uppercase.
+// If the string is empty, it returns an empty string.
+//
+// Example usage in templates:
+//
+//	{{ ucfirst "userName" }} -> "UserName"
+func ucfirst(s string) string {
+	if s == "" {
+		return ""
+	}
+	r := []rune(s)
+	r[0] = unicode.ToUpper(r[0])
+	return string(r)
+}
+
 // funcMap 返回模板中可用的函数映射
 func (e *Engine) funcMap() template.FuncMap {
 	return template.FuncMap{
@@ -118,5 +149,7 @@ func (e *Engine) funcMap() template.FuncMap {
 			}
 			return value
 		},
+		"lcfirst": lcfirst,
+		"ucfirst": ucfirst,
 	}
 }
