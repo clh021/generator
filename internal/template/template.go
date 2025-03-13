@@ -50,6 +50,7 @@ func (e *Engine) LoadVariables(variableFiles []string) error {
 }
 
 // Execute 执行单个模板生成
+// Execute 执行单个模板生成
 func (e *Engine) Execute(tplPath, outputPath string) error {
 	// 读取模板文件
 	content, err := os.ReadFile(tplPath)
@@ -57,11 +58,21 @@ func (e *Engine) Execute(tplPath, outputPath string) error {
 		return fmt.Errorf("读取模板文件失败: %w", err)
 	}
 
+	// 检查是否允许未定义的变量
+	allowUndefined, ok := e.vars["$config.allowUndefinedVariables"].(bool)
+
 	// 创建模板
-	tmpl, err := template.New(filepath.Base(tplPath)).
-		Option("missingkey=error").
-		Funcs(e.funcMap()).
-		Parse(string(content))
+	tmpl := template.New(filepath.Base(tplPath)).Funcs(e.funcMap())
+
+	// 根据配置设置 missingkey 选项
+	if ok && allowUndefined {
+		tmpl = tmpl.Option("missingkey=zero")
+	} else {
+		tmpl = tmpl.Option("missingkey=error")
+	}
+
+	// 解析模板
+	tmpl, err = tmpl.Parse(string(content))
 	if err != nil {
 		return fmt.Errorf("解析模板失败: %w", err)
 	}
