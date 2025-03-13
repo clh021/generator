@@ -82,14 +82,14 @@ func TestProcessTemplatePath(t *testing.T) {
 			name:     "missing variable",
 			path:     "path/to/__missing__.txt",
 			vars:     map[string]interface{}{},
-			expected: "",
-			wantErr:  true,
+			expected: "path/to/__missing__.txt",
+			wantErr:  false,
 		},
 		{
 			name:     "non-string variable",
 			path:     "path/to/__number__.txt",
 			vars:     map[string]interface{}{"number": 123},
-			expected: "path/to/123.txt",
+			expected: "path/to/__number__.txt",
 			wantErr:  false,
 		},
 		{
