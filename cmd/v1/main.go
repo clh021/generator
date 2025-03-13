@@ -89,8 +89,18 @@ func generateQuickStartExample() error {
   variables_dir: ".gen_variables"
   output_dir: ".gen_output"`,
 		".gen_variables/example.yaml": `greeting: "Hello"
-name: "World"`,
-		".gen_templates/example.txt.tpl": `{{ .greeting }}, {{ .name }}!`,
+name: "World"
+# 特殊配置：允许模板中使用未定义的变量
+# 当设置为 true 时，未定义的变量将被替换为零值（如空字符串）
+# 当设置为 false 或未设置时，未定义的变量将导致错误
+$config.allowUndefinedVariables: true`,
+		".gen_templates/example.txt.tpl": `{{ .greeting }}, {{ .name }}!
+
+# 这是一个演示未定义变量的例子
+未定义变量示例: {{ .undefinedVariable }}
+
+# 如果 $config.allowUndefinedVariables 为 true，上面的行将显示为空
+# 如果为 false，生成过程将因错误而停止`,
 	}
 
 	fmt.Println("将要生成以下文件:")
@@ -128,6 +138,9 @@ name: "World"`,
 	fmt.Println("4. 如果您不需要自定义配置，可以安全地删除 .gen_config.yaml 文件。")
 	fmt.Println("5. 你也可以通过命令行使用以下参数进行配置:")
 	fmt.Println("   generator -template <模板目录> -variables <变量目录> -output <输出目录>")
+	fmt.Println("6. 在 .gen_variables/example.yaml 文件中，")
+	fmt.Println("   '$config.allowUndefinedVariables: true' 允许模板中使用未定义的变量。")
+	fmt.Println("   您可以将其设置为 false 或删除该行以恢复严格模式。")
 	fmt.Println("\n示例输出将生成在 .gen_output/example.txt")
 
 	return nil
