@@ -103,15 +103,18 @@ name: "World"
 # 当设置为 true 时，未定义的变量将被替换为零值（如空字符串）
 # 当设置为 false 或未设置时，未定义的变量将导致错误
 $config.allowUndefinedVariables: true`,
+		".gen_variables/additional.yaml": `additional_var: "This is an additional variable"`,
 		".gen_templates/example.txt.tpl": `{{ .greeting }}, {{ .name }}!
 
 # 这是一个演示未定义变量的例子
 未定义变量示例: {{ .undefinedVariable }}
 
 # 如果 $config.allowUndefinedVariables 为 true，上面的行将显示为空
-# 如果为 false，生成过程将因错误而停止`,
-	}
+# 如果为 false，生成过程将因错误而停止
 
+# 这是一个来自额外变量文件的变量
+额外变量: {{ .additional_var }}`,
+	}
 	fmt.Println("将要生成以下文件:")
 	for path := range files {
 		fmt.Printf("- %s\n", path)
@@ -150,6 +153,10 @@ $config.allowUndefinedVariables: true`,
 	fmt.Println("6. 在 .gen_variables/example.yaml 文件中，")
 	fmt.Println("   '$config.allowUndefinedVariables: true' 允许模板中使用未定义的变量。")
 	fmt.Println("   您可以将其设置为 false 或删除该行以恢复严格模式。")
+	fmt.Println("7. 本示例中添加了一个额外的变量文件 .gen_variables/additional.yaml，")
+	fmt.Println("   展示了如何使用多个变量文件。")
+	fmt.Println("8. 您可以使用 -varfiles 参数指定额外的变量文件：")
+	fmt.Println("   generator -varfiles .gen_variables/example.yaml,.gen_variables/additional.yaml")
 	fmt.Println("\n示例输出将生成在 .gen_output/example.txt")
 
 	return nil
