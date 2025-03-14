@@ -48,7 +48,10 @@ func (g *Generator) Generate(cfg *config.Config) error {
 
 	// 检查变量目录是否存在
 	if _, err := os.Stat(cfg.VariablesDir); os.IsNotExist(err) {
-		return errors.Wrapf(err, "变量目录不存在: %s", cfg.VariablesDir)
+		if len(cfg.VariableFiles) == 0 {
+			return errors.Wrapf(err, "变量目录不存在且未指定变量文件: %s", cfg.VariablesDir)
+		}
+		log.Printf("警告: 变量目录不存在: %s，将只使用指定的变量文件", cfg.VariablesDir)
 	}
 
 	// 创建输出目录
@@ -60,6 +63,11 @@ func (g *Generator) Generate(cfg *config.Config) error {
 	variableFiles, err := loadVariableFiles(cfg.VariablesDir, cfg.VariableFiles)
 	if err != nil {
 		return errors.Wrap(err, "加载变量文件失败")
+	}
+
+	// 检查是否有可用的变量文件
+	if len(variableFiles) == 0 {
+		return errors.New("没有找到可用的变量文件")
 	}
 
 	// 创建模板引擎
