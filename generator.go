@@ -57,7 +57,7 @@ func (g *Generator) Generate(cfg *config.Config) error {
 	}
 
 	// 加载变量文件
-	variableFiles, err := loadVariableFiles(cfg.VariablesDir)
+	variableFiles, err := loadVariableFiles(cfg.VariablesDir, cfg.VariableFiles)
 	if err != nil {
 		return errors.Wrap(err, "加载变量文件失败")
 	}
@@ -120,18 +120,31 @@ func (g *Generator) Generate(cfg *config.Config) error {
 	return nil
 }
 
-// loadVariableFiles 加载变量目录下的所有 YAML 文件
-func loadVariableFiles(variablesDir string) ([]string, error) {
+func loadVariableFiles(variablesDir string, additionalFiles []string) ([]string, error) {
 	var files []string
-	yamlFiles, err := filepath.Glob(filepath.Join(variablesDir, "*.yaml"))
-	if err != nil {
-		return nil, errors.Wrap(err, "查找 *.yaml 变量文件失败")
+
+	// 加载目录中的文件
+	if variablesDir != "" {
+		yamlFiles, err := filepath.Glob(filepath.Join(variablesDir, "*.yaml"))
+		if err != nil {
+			return nil, errors.Wrap(err, "查找 *.yaml 变量文件失败")
+		}
+		ymlFiles, err := filepath.Glob(filepath.Join(variablesDir, "*.yml"))
+		if err != nil {
+			return nil, errors.Wrap(err, "查找 *.yml 变量文件失败")
+		}
+		files = append(yamlFiles, ymlFiles...)
 	}
-	ymlFiles, err := filepath.Glob(filepath.Join(variablesDir, "*.yml"))
-	if err != nil {
-		return nil, errors.Wrap(err, "查找 *.yml 变量文件失败")
+
+	// 添加额外的文件
+	for _, file := range additionalFiles {
+		if _, err := os.Stat(file); err == nil {
+			files = append(files, file)
+		} else {
+			log.Printf("警告: 无法访问变量文件 %s: %v", file, err)
+		}
 	}
-	files = append(yamlFiles, ymlFiles...)
+
 	return files, nil
 }
 

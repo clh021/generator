@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"generate"
 	"generate/internal/config"
@@ -17,6 +18,7 @@ func main() {
 	variablesDir := flag.String("variables", ".gen_variables", "变量目录路径")
 	outputDir := flag.String("output", ".gen_output", "输出目录路径")
 	quickStart := flag.Bool("quickstart", false, "生成快速开始示例")
+	variableFiles := flag.String("varfiles", "", "变量文件路径，多个文件用逗号分隔")
 
 	flag.Parse()
 
@@ -47,21 +49,28 @@ func main() {
 
 	// 创建配置
 	cfg := &config.Config{
-		TemplateDir:  *templateDir,
-		VariablesDir: *variablesDir,
-		OutputDir:    *outputDir,
+		TemplateDir:   *templateDir,
+		VariablesDir:  *variablesDir,
+		OutputDir:     *outputDir,
+		VariableFiles: []string{},
 	}
 
+	if *variableFiles != "" {
+		cfg.VariableFiles = strings.Split(*variableFiles, ",")
+	}
 	// 如果提供了工作目录，则将路径调整为相对于工作目录
 	if *workDir != "." {
 		cfg.TemplateDir = filepath.Join(*workDir, *templateDir)
 		cfg.VariablesDir = filepath.Join(*workDir, *variablesDir)
 		cfg.OutputDir = filepath.Join(*workDir, *outputDir)
+		for i, file := range cfg.VariableFiles {
+			cfg.VariableFiles[i] = filepath.Join(*workDir, file)
+		}
 	}
 
 	// 打印配置信息以便调试
-	log.Printf("使用的配置：\n模板目录: %s\n变量目录: %s\n输出目录: %s",
-		cfg.TemplateDir, cfg.VariablesDir, cfg.OutputDir)
+	log.Printf("使用的配置：\n模板目录: %s\n变量目录: %s\n输出目录: %s\n变量文件: %v",
+		cfg.TemplateDir, cfg.VariablesDir, cfg.OutputDir, cfg.VariableFiles)
 
 	gen := generate.NewGenerator()
 	if err := gen.Generate(cfg); err != nil {
