@@ -6,8 +6,6 @@ import (
 	"testing"
 
 	"generate/internal/config"
-
-	"gopkg.in/yaml.v3"
 )
 
 func TestNewGenerator(t *testing.T) {
@@ -20,33 +18,6 @@ func TestNewGenerator(t *testing.T) {
 	if g.variables == nil {
 		t.Error("variables map not initialized")
 	}
-}
-
-// loadVariableFilesMap 加载 variablesDir 目录下所有 YAML 文件，并解析为 map[string]interface{} 类型的变量映射
-func loadVariableFilesMap(variablesDir string) (map[string]interface{}, error) {
-	result := make(map[string]interface{})
-
-	// 调用原有 loadVariableFiles 获取 YAML 文件路径列表
-	files, err := loadVariableFiles(variablesDir)
-	if err != nil {
-		return nil, err
-	}
-
-	// 导入 yaml 包用于解析 YAML 文件
-	for _, file := range files {
-		data, err := os.ReadFile(file)
-		if err != nil {
-			return nil, err
-		}
-		var m map[string]interface{}
-		if err := yaml.Unmarshal(data, &m); err != nil {
-			return nil, err
-		}
-		for k, v := range m {
-			result[k] = v
-		}
-	}
-	return result, nil
 }
 
 func TestProcessTemplatePath(t *testing.T) {
@@ -121,57 +92,65 @@ func TestProcessTemplatePath(t *testing.T) {
 }
 
 func TestLoadVariableFiles(t *testing.T) {
-	// Create temporary directory
-	tempDir, err := os.MkdirTemp("", "generator-test")
+	// 创建临时目录
+	tempDir, err := os.MkdirTemp("", "variable_test")
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
 	defer os.RemoveAll(tempDir)
 
-	// Create test YAML files
-	yamlContent1 := []byte(`
-key1: value1
-key2: value2
-common: yaml1
-`)
-	yamlContent2 := []byte(`
-key3: value3
-key4: value4
-common: yaml2
-`)
-
-	yamlFile1 := filepath.Join(tempDir, "vars1.yaml")
-	yamlFile2 := filepath.Join(tempDir, "vars2.yml")
-
-	if err := os.WriteFile(yamlFile1, yamlContent1, 0644); err != nil {
+	// 创建测试文件
+	yamlFile := filepath.Join(tempDir, "test.yaml")
+	if err := os.WriteFile(yamlFile, []byte("key: value"), 0644); err != nil {
 		t.Fatalf("Failed to write yaml file: %v", err)
 	}
-	if err := os.WriteFile(yamlFile2, yamlContent2, 0644); err != nil {
+
+	ymlFile := filepath.Join(tempDir, "test.yml")
+	if err := os.WriteFile(ymlFile, []byte("key2: value2"), 0644); err != nil {
 		t.Fatalf("Failed to write yml file: %v", err)
 	}
-	g := NewGenerator()
 
-	// Test loading variable files
-	var vars map[string]interface{}
-	vars, err = loadVariableFilesMap(tempDir)
+	additionalFile := filepath.Join(tempDir, "additional.yaml")
+	if err := os.WriteFile(additionalFile, []byte("key3: value3"), 0644); err != nil {
+		t.Fatalf("Failed to write additional file: %v", err)
+	}
+
+	// 测试加载目录和额外文件
+	files, err := loadVariableFiles(tempDir, []string{additionalFile})
 	if err != nil {
-		t.Fatalf("loadVariableFiles() error = %v", err)
-	}
-	g.variables = vars
-
-	// Verify variables were loaded and merged correctly
-	expectedVars := map[string]interface{}{
-		"key1":   "value1",
-		"key2":   "value2",
-		"key3":   "value3",
-		"key4":   "value4",
-		"common": "yaml2", // Last file loaded should override
+		t.Fatalf("loadVariableFiles failed: %v", err)
 	}
 
-	for k, v := range expectedVars {
-		if g.variables[k] != v {
-			t.Errorf("Variable %s = %v, want %v", k, g.variables[k], v)
+	expectedFiles := 3
+	if len(files) != expectedFiles {
+		t.Errorf("Expected %d files, got %d", expectedFiles, len(files))
+	}
+
+	// 检查是否包含所有预期的文件
+	expectedPaths := []string{yamlFile, ymlFile, additionalFile}
+	for _, expected := range expectedPaths {
+		found := false
+		for _, file := range files {
+			if file == expected {
+				found = true
+				break
+			}
 		}
+		if !found {
+			t.Errorf("Expected file %s not found in result", expected)
+		}
+	}
+
+	// 测试非存在的目录
+	_, err = loadVariableFiles("/non/existent/dir", nil)
+	if err != nil {
+		t.Errorf("Expected no error for non-existent directory, got: %v", err)
+	}
+
+	// 测试非存在的额外文件
+	_, err = loadVariableFiles("", []string{"/non/existent/file.yaml"})
+	if err != nil {
+		t.Errorf("Expected no error for non-existent additional file, got: %v", err)
 	}
 }
 

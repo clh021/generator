@@ -28,24 +28,39 @@ func TestLoadVariables(t *testing.T) {
 	defer os.RemoveAll(tempDir)
 
 	// 创建测试变量文件
-	variablesContent := []byte(`
+	variablesContent1 := []byte(`
 key1: value1
 key2:
   nestedKey: nestedValue
 `)
-	variablesPath := filepath.Join(tempDir, "variables.yaml")
-	if err := os.WriteFile(variablesPath, variablesContent, 0644); err != nil {
+	variablesPath1 := filepath.Join(tempDir, "variables1.yaml")
+	if err := os.WriteFile(variablesPath1, variablesContent1, 0644); err != nil {
+		t.Fatalf("Failed to write variables file: %v", err)
+	}
+
+	variablesContent2 := []byte(`
+key3: value3
+key2:
+  nestedKey2: nestedValue2
+`)
+	variablesPath2 := filepath.Join(tempDir, "variables2.yaml")
+	if err := os.WriteFile(variablesPath2, variablesContent2, 0644); err != nil {
 		t.Fatalf("Failed to write variables file: %v", err)
 	}
 
 	e := New("/tmp/template", tempDir, "/tmp/output")
-	err = e.LoadVariables([]string{variablesPath})
+	err = e.LoadVariables([]string{variablesPath1, variablesPath2})
 	if err != nil {
 		t.Fatalf("LoadVariables failed: %v", err)
 	}
 
+	// 检查变量是否正确加载
 	if e.vars["key1"] != "value1" {
 		t.Errorf("Expected key1 to be 'value1', got %v", e.vars["key1"])
+	}
+
+	if e.vars["key3"] != "value3" {
+		t.Errorf("Expected key3 to be 'value3', got %v", e.vars["key3"])
 	}
 
 	nestedMap, ok := e.vars["key2"].(map[string]interface{})
@@ -54,6 +69,15 @@ key2:
 	}
 	if nestedMap["nestedKey"] != "nestedValue" {
 		t.Errorf("Expected nestedKey to be 'nestedValue', got %v", nestedMap["nestedKey"])
+	}
+	if nestedMap["nestedKey2"] != "nestedValue2" {
+		t.Errorf("Expected nestedKey2 to be 'nestedValue2', got %v", nestedMap["nestedKey2"])
+	}
+
+	// 测试加载不存在的文件
+	err = e.LoadVariables([]string{"/non/existent/file.yaml"})
+	if err == nil {
+		t.Errorf("Expected error when loading non-existent file, got nil")
 	}
 }
 
