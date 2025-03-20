@@ -8,11 +8,12 @@
 
 # 设置项目根目录
 PROJECT_ROOT=$(git rev-parse --show-toplevel)
-PRETTIER_BIN="$PROJECT_ROOT/rjgc/node_modules/.bin/prettier"
+# PRETTIER_BIN="$PROJECT_ROOT/rjgc/node_modules/.bin/prettier"
+PRETTIER_BIN="$HOME/.local/share/pnpm/prettier"
 
 # 开关变量
 FORMAT_BACKEND=true
-FORMAT_FRONTEND=false  # 设置为 true 以启用前端格式化
+FORMAT_FRONTEND=true # 设置为 true 以启用前端格式化
 
 # 检查项目根目录是否存在
 if [ ! -d "$PROJECT_ROOT" ]; then
@@ -22,8 +23,8 @@ fi
 
 # 安装 pre-commit 钩子的函数
 install_pre_commit() {
-    local pre_commit_path="$PROJECT_ROOT/.git/hooks/pre-commit"
-    local pre_commit_content='#!/usr/bin/env bash
+  local pre_commit_path="$PROJECT_ROOT/.git/hooks/pre-commit"
+  local pre_commit_content='#!/usr/bin/env bash
 # 自动生成的 pre-commit 钩子
 
 # 获取 git 仓库根目录
@@ -38,101 +39,101 @@ if [ $? -ne 0 ]; then
     exit 1
 fi'
 
-    echo "$pre_commit_content" > "$pre_commit_path"
-    chmod +x "$pre_commit_path"
-    echo "pre-commit 钩子已成功安装到 $pre_commit_path"
+  echo "$pre_commit_content" >"$pre_commit_path"
+  chmod +x "$pre_commit_path"
+  echo "pre-commit 钩子已成功安装到 $pre_commit_path"
 }
 
 # 处理命令行参数
 if [ "$1" = "--install-hook" ]; then
-    install_pre_commit
-    exit 0
+  install_pre_commit
+  exit 0
 fi
 
 # 格式化后端文件的函数
 format_backend_files() {
-    local target_path=$1
-    echo "开始格式化 $target_path 下的所有 .go 文件..."
-    find "$target_path" -type f -name "*.go" -exec gofmt -w {} \;
+  local target_path=$1
+  echo "开始格式化 $target_path 下的所有 .go 文件..."
+  find "$target_path" -type f -name "*.go" -exec gofmt -w {} \;
 }
 
 # 格式化前端文件的函数
 format_frontend_files() {
-    local target_path=$1
-    if [ -f "$PRETTIER_BIN" ]; then
-        echo "开始格式化 $target_path 下的所有前端文件..."
-        $PRETTIER_BIN --write "$target_path/**/*.{js,jsx,ts,vue,tsx,json}"
-    else
-        echo "无法找到 prettier 程序，跳过前端文件格式化。"
-    fi
+  local target_path=$1
+  if [ -f "$PRETTIER_BIN" ]; then
+    echo "开始格式化 $target_path 下的所有前端文件..."
+    $PRETTIER_BIN --write "$target_path/**/*.{js,jsx,ts,vue,tsx,json}"
+  else
+    echo "无法找到 prettier 程序，跳过前端文件格式化。"
+  fi
 }
 
 # 处理特定类型文件的函数
 format_files() {
-    local files=$1
-    local format_cmd=$2
-    local file_pattern=$3
+  local files=$1
+  local format_cmd=$2
+  local file_pattern=$3
 
-    if [ -z "$files" ]; then
-        echo "没有需要格式化的 $file_pattern 文件。"
-    else
-        echo "开始格式化 $file_pattern 文件..."
-        for file in $files; do
-            if [ -f "$file" ]; then
-                echo "正在格式化: $file"
-                $format_cmd "$file"
-                git add "$file"
-                echo "已格式化并添加到暂存区: $file"
-            else
-                echo "文件 $file 不存在，跳过格式化。"
-            fi
-        done
-    fi
+  if [ -z "$files" ]; then
+    echo "没有需要格式化的 $file_pattern 文件。"
+  else
+    echo "开始格式化 $file_pattern 文件..."
+    for file in $files; do
+      if [ -f "$file" ]; then
+        echo "正在格式化: $file"
+        $format_cmd "$file"
+        git add "$file"
+        echo "已格式化并添加到暂存区: $file"
+      else
+        echo "文件 $file 不存在，跳过格式化。"
+      fi
+    done
+  fi
 }
 
 # 主要逻辑
 if [ $# -gt 0 ]; then
-    TARGET_PATH="$1"
-    if [ -d "$TARGET_PATH" ]; then
-        # 如果是目录，格式化整个目录
-        [ "$FORMAT_BACKEND" = true ] && format_backend_files "$TARGET_PATH"
-        [ "$FORMAT_FRONTEND" = true ] && format_frontend_files "$TARGET_PATH"
-        echo "目录格式化完成！"
-        exit 0
-    elif [ -f "$TARGET_PATH" ]; then
-        # 如果是文件，根据文件类型进行格式化
-        if [[ "$TARGET_PATH" == *.go ]]; then
-            [ "$FORMAT_BACKEND" = true ] && gofmt -w "$TARGET_PATH"
-            echo "Go 文件格式化完成：$TARGET_PATH"
-        elif [[ "$TARGET_PATH" =~ \.(js|jsx|ts|vue|tsx|json)$ ]]; then
-            if [ "$FORMAT_FRONTEND" = true ] && [ -f "$PRETTIER_BIN" ]; then
-                "$PRETTIER_BIN" --write "$TARGET_PATH"
-                echo "前端文件格式化完成：$TARGET_PATH"
-            else
-                echo "前端格式化未启用或找不到 prettier，跳过格式化：$TARGET_PATH"
-            fi
-        else
-            echo "不支持的文件类型：$TARGET_PATH"
-        fi
-        exit 0
+  TARGET_PATH="$1"
+  if [ -d "$TARGET_PATH" ]; then
+    # 如果是目录，格式化整个目录
+    [ "$FORMAT_BACKEND" = true ] && format_backend_files "$TARGET_PATH"
+    [ "$FORMAT_FRONTEND" = true ] && format_frontend_files "$TARGET_PATH"
+    echo "目录格式化完成！"
+    exit 0
+  elif [ -f "$TARGET_PATH" ]; then
+    # 如果是文件，根据文件类型进行格式化
+    if [[ "$TARGET_PATH" == *.go ]]; then
+      [ "$FORMAT_BACKEND" = true ] && gofmt -w "$TARGET_PATH"
+      echo "Go 文件格式化完成：$TARGET_PATH"
+    elif [[ "$TARGET_PATH" =~ \.(js|jsx|ts|vue|tsx|json)$ ]]; then
+      if [ "$FORMAT_FRONTEND" = true ] && [ -f "$PRETTIER_BIN" ]; then
+        "$PRETTIER_BIN" --write "$TARGET_PATH"
+        echo "前端文件格式化完成：$TARGET_PATH"
+      else
+        echo "前端格式化未启用或找不到 prettier，跳过格式化：$TARGET_PATH"
+      fi
     else
-        echo "提供的路径 $TARGET_PATH 不存在或不是有效的文件/目录。"
-        exit 1
+      echo "不支持的文件类型：$TARGET_PATH"
     fi
+    exit 0
+  else
+    echo "提供的路径 $TARGET_PATH 不存在或不是有效的文件/目录。"
+    exit 1
+  fi
 fi
 
 # 处理修改的文件
 if [ "$FORMAT_BACKEND" = true ]; then
-    MODIFIED_GO_FILES=$(git diff --name-only --cached | grep '\.go$')
-    format_files "$MODIFIED_GO_FILES" "gofmt -w" ".go"
+  MODIFIED_GO_FILES=$(git diff --name-only --cached | grep '\.go$')
+  format_files "$MODIFIED_GO_FILES" "gofmt -w" ".go"
 fi
 
 if [ "$FORMAT_FRONTEND" = true ]; then
-    if [ -f "$PRETTIER_BIN" ]; then
-        MODIFIED_FRONTEND_FILES=$(git diff --name-only --cached | grep -E '\.(js|jsx|ts|vue|tsx|json)$')
-        format_files "$MODIFIED_FRONTEND_FILES" "$PRETTIER_BIN --write" "前端"
-    else
-        echo "无法找到 prettier 程序，跳过前端文件格式化。"
-    fi
+  if [ -f "$PRETTIER_BIN" ]; then
+    MODIFIED_FRONTEND_FILES=$(git diff --name-only --cached | grep -E '\.(js|jsx|ts|vue|tsx|json)$')
+    format_files "$MODIFIED_FRONTEND_FILES" "$PRETTIER_BIN --write" "前端"
+  else
+    echo "无法找到 prettier 程序，跳过前端文件格式化。"
+  fi
 fi
 echo "格式化完成！"
