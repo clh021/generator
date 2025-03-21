@@ -114,6 +114,14 @@ $config.allowUndefinedVariables: true`,
 
 # 这是一个来自额外变量文件的变量
 额外变量: {{ .additional_var }}`,
+		".gen_templates/parent.txt.tpl": `This is the parent template.
+
+# 这是一个相对路径引用的子模板
+{{ include "child__child__.txt.tpl" . }}`,
+		".gen_templates/child__child__.txt.tpl": `This is the child template.
+
+# 从父模板传递的变量：
+{{ .greeting }}`,
 	}
 	fmt.Println("将要生成以下文件:")
 	for path := range files {
@@ -157,7 +165,10 @@ $config.allowUndefinedVariables: true`,
 	fmt.Println("   展示了如何使用多个变量文件。")
 	fmt.Println("8. 您可以使用 -varfiles 参数指定额外的变量文件：")
 	fmt.Println("   generator -varfiles .gen_variables/example.yaml,.gen_variables/additional.yaml")
-	fmt.Println("\n示例输出将生成在 .gen_output/example.txt")
+	fmt.Println("9.  本示例中添加了子模板 parent.txt.tpl 和 child__child__.txt.tpl，")
+	fmt.Println("    展示了如何使用子模板以及变量传递，以及子模板如何避免被独立生成。")
+	fmt.Println("10. 由于 `child__child__.txt.tpl` 文件名中包含 `__child__`，所以它不会被独立生成。")
+	fmt.Println("\n示例输出将生成在 .gen_output/example.txt 和 .gen_output/parent.txt")
 
 	return nil
 }
