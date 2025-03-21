@@ -10,14 +10,17 @@
 - 支持在输出路径中使用变量
 - 快速启动示例生成
 - 支持多个变量文件
+- **支持子模板：允许模板包含其他模板，实现模板复用和模块化。**
+- **模板路径变量：支持在输出路径中使用变量引用，例如 `__variable__`，实现更灵活的文件组织。**
+- **跳过子模板生成：自动跳过模板文件路径中包含 `__child__` 的文件，避免生成多余的子模板文件。**
 
 ## 开始使用
 
-1. 确保已安装 Go 和 Go 工具链。
-2. 克隆项目仓库到本地机器。
-3. 进入 `generator` 目录。
-4. 运行 `go build -o generator cmd/v1/main.go` 来编译生成器。
-5. 运行 `./generator -quickstart` 来生成快速启动示例。
+1.  确保已安装 Go 和 Go 工具链。
+2.  克隆项目仓库到本地机器。
+3.  进入 `generator` 目录。
+4.  运行 `go build -o generator cmd/v1/main.go` 来编译生成器。
+5.  运行 `./generator -quickstart` 来生成快速启动示例。
 
 ## 使用方法
 
@@ -41,30 +44,35 @@ generator [选项]
 
 ### 示例
 
-1. 生成快速启动示例：
-   ```
-   ./generator -quickstart
-   ```
+1.  生成快速启动示例：
 
-2. 使用默认配置生成代码：
-   ```
-   ./generator
-   ```
+    ```
+    ./generator -quickstart
+    ```
 
-3. 指定工作目录：
-   ```
-   ./generator -dir /path/to/workdir
-   ```
+2.  使用默认配置生成代码：
 
-4. 自定义模板、变量和输出目录：
-   ```
-   ./generator -template /path/to/templates -variables /path/to/variables -output /path/to/output
-   ```
+    ```
+    ./generator
+    ```
 
-5. 使用多个变量文件：
-   ```
-   ./generator -varfiles file1.yaml,file2.yaml
-   ```
+3.  指定工作目录：
+
+    ```
+    ./generator -dir /path/to/workdir
+    ```
+
+4.  自定义模板、变量和输出目录：
+
+    ```
+    ./generator -template /path/to/templates -variables /path/to/variables -output /path/to/output
+    ```
+
+5.  使用多个变量文件：
+
+    ```
+    ./generator -varfiles file1.yaml,file2.yaml
+    ```
 
 ## 配置文件
 
@@ -76,8 +84,19 @@ generator [选项]
 
 ## 模板特性
 
-- 内置字符串处理函数
-- 支持在输出路径中使用变量
+- 内置字符串处理函数 (`lcfirst`, `ucfirst`, `default`, `file`, `currentYear`, `dict`)
+- 支持在输出路径中使用变量，例如 `__variableName__`。
+- **支持子模板： 使用 `{{ include "path/to/sub_template.tpl" . }}` 在模板中包含其他模板文件。 子模板可以访问父模板中的变量。 限制最大嵌套层数为 2 层，防止循环引用。**
+
+## 子模板使用说明
+
+1.  **路径查找：** 子模板的路径优先作为相对于父模板的相对路径查找。如果指定了绝对路径，则直接使用绝对路径。
+
+2.  **循环引用：** 限制子模板的嵌套层数为 2 层，超过则会报错。
+
+3.  **变量传递：** 子模板可以访问父模板中定义的变量。
+
+4.  **子模板命名:** 为了避免子模板被独立生成，请在子模板文件名或路径中包含 `__child__` 字符串。 包含 `__child__` 的模板文件将被自动跳过生成，并给出提示。  例如：`child__child__.tpl` 或者 `__child__/template.tpl`。
 
 ## 错误处理
 
