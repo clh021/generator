@@ -9,16 +9,35 @@ export GO111MODULE=on
 # 进入项目根目录
 cd "$(dirname "$0")/"
 
+# 获取 Git Commit ID
+COMMIT_ID=$(git rev-parse --short HEAD)
+
+# 获取 Git Commit Time (RFC3339 格式)
+COMMIT_TIME=$(git log -1 --format=%aI)
+
+# 获取 Commit Count
+COMMIT_COUNT=$(git rev-list --count HEAD)
+
+# 构建版本号
+VERSION="0.0.${COMMIT_COUNT}"
+
+# 获取构建时间
+BUILD_TIME=$(date -Iseconds)
+
+# 设置 -ldflags 参数
+LDFLAGS="-X main.Version=${VERSION} -X main.CommitID=${COMMIT_ID} -X main.CommitTime=${COMMIT_TIME} -X main.BuildTime=${BUILD_TIME}"
+
 # 确保 dist/bin 目录存在
 mkdir -p dist/bin
-
 
 # 下载依赖
 go mod tidy
 go mod vendor
 
 # 编译项目，添加更多的编译信息
-go build -v -o dist/bin/gen ./cmd/v1/main.go
+go build -v -ldflags="${LDFLAGS}" -o dist/bin/generator cmd/v1/*.go
+
+echo "构建完成，版本号: ${VERSION}"
 
 # 检查编译是否成功
 if [ $? -ne 0 ]; then

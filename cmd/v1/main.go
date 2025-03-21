@@ -12,6 +12,8 @@ import (
 	"generate/internal/config"
 )
 
+var versionCmd = flag.NewFlagSet("version", flag.ExitOnError)
+
 func main() {
 	workDir := flag.String("dir", ".", "工作目录路径")
 	templateDir := flag.String("template", ".gen_templates", "模板目录路径")
@@ -19,6 +21,13 @@ func main() {
 	outputDir := flag.String("output", ".gen_output", "输出目录路径")
 	quickStart := flag.Bool("quickstart", false, "生成快速开始示例")
 	variableFiles := flag.String("varfiles", "", "变量文件路径，多个文件用逗号分隔")
+
+	// 定义 version 子命令
+	if len(os.Args) > 1 && os.Args[1] == "version" {
+		versionCmd.Parse(os.Args[2:])
+		printVersion()
+		os.Exit(0)
+	}
 
 	flag.Parse()
 
