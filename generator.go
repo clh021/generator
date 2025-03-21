@@ -91,6 +91,12 @@ func (g *Generator) Generate(cfg *config.Config) error {
 			return nil
 		}
 
+		// 检查是否为子模板，如果包含 __child__ 则跳过
+		if strings.Contains(path, "__child__") {
+			log.Printf("跳过子模板: %s", path)
+			return nil
+		}
+
 		relativePath, err := filepath.Rel(cfg.TemplateDir, path)
 		if err != nil {
 			return errors.Wrap(err, "获取相对路径失败")
