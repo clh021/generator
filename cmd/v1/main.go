@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"generate"
 	"generate/pkg/config"
+	"generate/pkg/generator"
 )
 
 var versionCmd = flag.NewFlagSet("version", flag.ExitOnError)
@@ -81,7 +81,7 @@ func main() {
 	log.Printf("使用的配置：\n模板目录: %s\n变量目录: %s\n输出目录: %s\n变量文件: %v",
 		cfg.TemplateDir, cfg.VariablesDir, cfg.OutputDir, cfg.VariableFiles)
 
-	gen := generate.NewGenerator()
+	gen := generator.NewGenerator()
 	if err := gen.Generate(cfg); err != nil {
 		log.Fatalf("生成失败: %+v", err)
 	}

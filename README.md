@@ -80,7 +80,7 @@ generator [选项]
 
 ## 作为库使用
 
-生成器也可以作为 Go 项目中的库使用。导入 `generate` 包并调用 `Generate` 函数。
+生成器也可以作为 Go 项目中的库使用。导入 `generate/pkg/generator` 包并调用 `Generate` 函数。
 
 ### 示例代码
 
@@ -91,13 +91,13 @@ import (
 	"log"
 	"path/filepath"
 
-	"generate"
+	"generate/pkg/generator"
 	"generate/pkg/config"
 )
 
 func main() {
 	// 创建生成器实例
-	gen := generate.NewGenerator()
+	gen := generator.NewGenerator()
 
 	// 配置生成器
 	cfg := &config.Config{
@@ -120,7 +120,7 @@ func main() {
 
 ### 使用说明
 
-1. **创建生成器实例**：使用 `generate.NewGenerator()` 创建一个新的生成器实例。
+1. **创建生成器实例**：使用 `generator.NewGenerator()` 创建一个新的生成器实例。
 
 2. **配置生成器**：创建 `config.Config` 结构体并设置以下字段：
    - `TemplateDir`：模板目录路径

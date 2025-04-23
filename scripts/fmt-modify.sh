@@ -2,9 +2,9 @@
 # leehom Chen clh021@gmail.com
 
 # 使用说明：
-# 1. 运行格式化: ./fmt-modify.sh
-# 2. 安装 pre-commit 钩子: ./fmt-modify.sh --install-hook
-# 3. 格式化特定目录: ./fmt-modify.sh /path/to/directory
+# 1. 运行格式化: ./scripts/fmt-modify.sh
+# 2. 安装 pre-commit 钩子: ./scripts/fmt-modify.sh --install-hook
+# 3. 格式化特定目录: ./scripts/fmt-modify.sh /path/to/directory
 
 # 设置项目根目录
 PROJECT_ROOT=$(git rev-parse --show-toplevel)
@@ -31,7 +31,7 @@ install_pre_commit() {
 REPO_ROOT=$(git rev-parse --show-toplevel)
 
 # 运行格式化脚本
-"$REPO_ROOT/fmt-modify.sh"
+"$REPO_ROOT/scripts/fmt-modify.sh"
 
 # 检查格式化脚本是否成功执行
 if [ $? -ne 0 ]; then

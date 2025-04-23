@@ -7,7 +7,7 @@ set -e  # 遇到错误立即退出
 export GO111MODULE=on
 
 # 进入项目根目录
-cd "$(dirname "$0")/"
+cd "$(dirname "$0")/../"
 
 # 获取 Git Commit ID
 COMMIT_ID=$(git rev-parse --short HEAD)
