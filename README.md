@@ -80,7 +80,61 @@ generator [选项]
 
 ## 作为库使用
 
-生成器也可以作为 Go 项目中的库使用。导入 `generator` 包并调用 `Generate` 函数。
+生成器也可以作为 Go 项目中的库使用。导入 `generate` 包并调用 `Generate` 函数。
+
+### 示例代码
+
+```go
+package main
+
+import (
+	"log"
+	"path/filepath"
+
+	"generate"
+	"generate/internal/config"
+)
+
+func main() {
+	// 创建生成器实例
+	gen := generate.NewGenerator()
+
+	// 配置生成器
+	cfg := &config.Config{
+		TemplateDir:  "./templates",      // 模板目录
+		VariablesDir: "./variables",     // 变量目录
+		OutputDir:    "./output",        // 输出目录
+		VariableFiles: []string{         // 可选：指定额外的变量文件
+			"./custom_variables.yaml",
+		},
+	}
+
+	// 执行生成
+	if err := gen.Generate(cfg); err != nil {
+		log.Fatalf("生成失败: %v", err)
+	}
+
+	log.Println("生成完成")
+}
+```
+
+### 使用说明
+
+1. **创建生成器实例**：使用 `generate.NewGenerator()` 创建一个新的生成器实例。
+
+2. **配置生成器**：创建 `config.Config` 结构体并设置以下字段：
+   - `TemplateDir`：模板目录路径
+   - `VariablesDir`：变量目录路径
+   - `OutputDir`：输出目录路径
+   - `VariableFiles`：（可选）额外的变量文件路径列表
+
+3. **执行生成**：调用 `gen.Generate(cfg)` 方法执行代码生成。
+
+生成器会自动：
+- 加载所有变量文件
+- 遍历模板目录中的所有模板文件
+- 处理模板中的变量引用和子模板
+- 将生成的文件保存到输出目录
 
 ## 模板特性
 
