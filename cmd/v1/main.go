@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"generate"
-	"generate/internal/config"
+	"generate/pkg/config"
 )
 
 var versionCmd = flag.NewFlagSet("version", flag.ExitOnError)

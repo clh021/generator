@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"generate/internal/config"
+	"generate/pkg/config"
 )
 
 func TestNewGenerator(t *testing.T) {

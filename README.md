@@ -92,7 +92,7 @@ import (
 	"path/filepath"
 
 	"generate"
-	"generate/internal/config"
+	"generate/pkg/config"
 )
 
 func main() {

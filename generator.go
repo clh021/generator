@@ -1,8 +1,8 @@
 package generate
 
 import (
-	"generate/internal/config"
 	"generate/internal/template"
+	"generate/pkg/config"
 	"log"
 	"os"
 	"path/filepath"
