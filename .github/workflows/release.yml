@@ -1,0 +1,106 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*' # 当推送以 v 开头的标签时触发，例如 v1.0.0
+
+jobs:
+  build:
+    name: Build and Release
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # 定义要构建的目标平台
+        include:
+          - goos: linux
+            goarch: amd64
+            suffix: ""
+          - goos: linux
+            goarch: arm64
+            suffix: ""
+          - goos: darwin
+            goarch: amd64
+            suffix: ""
+          - goos: darwin
+            goarch: arm64
+            suffix: ""
+          - goos: windows
+            goarch: amd64
+            suffix: ".exe"
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 # 获取完整的 git 历史，用于生成版本号
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.22' # 使用最新的稳定版 Go
+
+      - name: Get version info
+        id: get_version
+        run: |
+          echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+          echo "COMMIT_ID=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+          echo "COMMIT_TIME=$(git log -1 --format=%aI)" >> $GITHUB_ENV
+          echo "COMMIT_COUNT=$(git rev-list --count HEAD)" >> $GITHUB_ENV
+          echo "BUILD_TIME=$(date -Iseconds)" >> $GITHUB_ENV
+
+      - name: Build
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: 0
+        run: |
+          # 设置输出文件名
+          OUTPUT_NAME=generator-${{ env.VERSION }}-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.suffix }}
+          
+          # 设置 ldflags 参数
+          LDFLAGS="-X main.Version=${{ env.VERSION }} -X main.CommitID=${{ env.COMMIT_ID }} -X main.CommitTime=${{ env.COMMIT_TIME }} -X main.BuildTime=${{ env.BUILD_TIME }}"
+          
+          # 编译
+          go build -v -ldflags="${LDFLAGS}" -o "build/dist/bin/${OUTPUT_NAME}" cmd/v1/*.go
+          
+          # 创建压缩包
+          if [[ "${{ matrix.goos }}" == "windows" ]]; then
+            zip -j "build/dist/bin/${OUTPUT_NAME}.zip" "build/dist/bin/${OUTPUT_NAME}"
+            echo "ASSET=build/dist/bin/${OUTPUT_NAME}.zip" >> $GITHUB_ENV
+          else
+            tar -czf "build/dist/bin/${OUTPUT_NAME}.tar.gz" -C build/dist/bin "${OUTPUT_NAME}"
+            echo "ASSET=build/dist/bin/${OUTPUT_NAME}.tar.gz" >> $GITHUB_ENV
+          fi
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: generator-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: ${{ env.ASSET }}
+          if-no-files-found: error
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: artifacts
+
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Release ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          files: artifacts/**/*
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
