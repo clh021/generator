@@ -2,10 +2,14 @@ name: Release
 
 on:
   push:
-    paths:
-      - '.github/workflows/**'
     tags:
       - 'v*' # 当推送以 v 开头的标签时触发，例如 v1.0.0
+  workflow_dispatch: # 允许手动触发工作流
+    inputs:
+      version:
+        description: '版本号 (例如: v1.0.0)'
+        required: true
+        default: 'v0.0.0-manual'
 
 jobs:
   build:
@@ -45,7 +49,12 @@ jobs:
       - name: Get version info
         id: get_version
         run: |
-          echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+          # 如果是手动触发，使用输入的版本号，否则使用标签版本
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_ENV
+          else
+            echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+          fi
           echo "COMMIT_ID=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
           echo "COMMIT_TIME=$(git log -1 --format=%aI)" >> $GITHUB_ENV
           echo "COMMIT_COUNT=$(git rev-list --count HEAD)" >> $GITHUB_ENV
@@ -104,7 +113,8 @@ jobs:
         id: create_release
         uses: softprops/action-gh-release@v2
         with:
-          name: Release ${{ github.ref_name }}
+          name: Release ${{ env.VERSION }}
+          tag_name: ${{ github.event_name == 'workflow_dispatch' && env.VERSION || github.ref_name }}
           draft: false
           prerelease: false
           files: artifacts/**/*
