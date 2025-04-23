@@ -27,15 +27,15 @@ BUILD_TIME=$(date -Iseconds)
 # 设置 -ldflags 参数
 LDFLAGS="-X main.Version=${VERSION} -X main.CommitID=${COMMIT_ID} -X main.CommitTime=${COMMIT_TIME} -X main.BuildTime=${BUILD_TIME}"
 
-# 确保 dist/bin 目录存在
-mkdir -p dist/bin
+# 确保 build/dist/bin 目录存在
+mkdir -p build/dist/bin
 
 # 下载依赖
 go mod tidy
 go mod vendor
 
 # 编译项目，添加更多的编译信息
-go build -v -ldflags="${LDFLAGS}" -o dist/bin/generator cmd/v1/*.go
+go build -v -ldflags="${LDFLAGS}" -o build/dist/bin/generator cmd/v1/*.go
 
 echo "构建完成，版本号: ${VERSION}"
 
@@ -46,7 +46,7 @@ if [ $? -ne 0 ]; then
 fi
 
 # 确保输出目录存在
-mkdir -p dist/bin/
+mkdir -p build/dist/bin/
 
 # 运行 astgen
-# dist/bin/astgen
+# build/dist/bin/astgen

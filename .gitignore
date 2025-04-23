@@ -1,6 +1,6 @@
 .vscode
 vendor
-dist
+build/dist
 .aider*
 .cache
 .streamlit
