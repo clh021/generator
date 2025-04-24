@@ -59,6 +59,43 @@ jobs:
           echo "COMMIT_TIME=$(git log -1 --format=%aI)" >> $GITHUB_ENV
           echo "COMMIT_COUNT=$(git rev-list --count HEAD)" >> $GITHUB_ENV
           echo "BUILD_TIME=$(date -Iseconds)" >> $GITHUB_ENV
+          
+          # 查找上一个标签
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          
+          if [ -z "$PREV_TAG" ]; then
+            # 如果没有找到上一个标签，获取所有提交
+            echo "没有找到上一个标签，获取所有提交记录"
+            COMMIT_COUNT=$(git rev-list --count HEAD)
+            
+            if [ "$COMMIT_COUNT" -gt 20 ]; then
+              # 如果提交数量超过20条，只获取最近20条
+              echo "提交数量($COMMIT_COUNT)超过20条，只获取最近20条"
+              COMMIT_LOGS=$(git log -20 --pretty=format:"- %h %s (%an, %ad)" --date=short)
+            else
+              # 否则获取所有提交
+              echo "提交数量($COMMIT_COUNT)不超过20条，获取所有提交"
+              COMMIT_LOGS=$(git log --pretty=format:"- %h %s (%an, %ad)" --date=short)
+            fi
+          else
+            # 如果找到了上一个标签，获取自上一个标签以来的所有提交
+            echo "找到上一个标签: $PREV_TAG"
+            COMMIT_COUNT=$(git rev-list --count $PREV_TAG..HEAD)
+            
+            if [ "$COMMIT_COUNT" -gt 20 ]; then
+              # 如果提交数量超过20条，只获取最近20条
+              echo "自上一个标签以来的提交数量($COMMIT_COUNT)超过20条，只获取最近20条"
+              COMMIT_LOGS=$(git log -20 --pretty=format:"- %h %s (%an, %ad)" --date=short)
+            else
+              # 否则获取自上一个标签以来的所有提交
+              echo "自上一个标签以来的提交数量($COMMIT_COUNT)不超过20条，获取所有提交"
+              COMMIT_LOGS=$(git log $PREV_TAG..HEAD --pretty=format:"- %h %s (%an, %ad)" --date=short)
+            fi
+          fi
+          
+          echo "COMMIT_LOGS<<EOF" >> $GITHUB_ENV
+          echo "$COMMIT_LOGS" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
 
       - name: Build
         env:
@@ -129,6 +166,59 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # 获取完整的 git 历史
+
+      - name: Get version info
+        id: get_version
+        run: |
+          # 如果是手动触发，使用输入的版本号，否则使用标签版本
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_ENV
+          else
+            echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+          fi
+          
+          # 查找上一个标签
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          
+          if [ -z "$PREV_TAG" ]; then
+            # 如果没有找到上一个标签，获取所有提交
+            echo "没有找到上一个标签，获取所有提交记录"
+            COMMIT_COUNT=$(git rev-list --count HEAD)
+            
+            if [ "$COMMIT_COUNT" -gt 20 ]; then
+              # 如果提交数量超过20条，只获取最近20条
+              echo "提交数量($COMMIT_COUNT)超过20条，只获取最近20条"
+              COMMIT_LOGS=$(git log -20 --pretty=format:"- %h %s (%an, %ad)" --date=short)
+            else
+              # 否则获取所有提交
+              echo "提交数量($COMMIT_COUNT)不超过20条，获取所有提交"
+              COMMIT_LOGS=$(git log --pretty=format:"- %h %s (%an, %ad)" --date=short)
+            fi
+          else
+            # 如果找到了上一个标签，获取自上一个标签以来的所有提交
+            echo "找到上一个标签: $PREV_TAG"
+            COMMIT_COUNT=$(git rev-list --count $PREV_TAG..HEAD)
+            
+            if [ "$COMMIT_COUNT" -gt 20 ]; then
+              # 如果提交数量超过20条，只获取最近20条
+              echo "自上一个标签以来的提交数量($COMMIT_COUNT)超过20条，只获取最近20条"
+              COMMIT_LOGS=$(git log -20 --pretty=format:"- %h %s (%an, %ad)" --date=short)
+            else
+              # 否则获取自上一个标签以来的所有提交
+              echo "自上一个标签以来的提交数量($COMMIT_COUNT)不超过20条，获取所有提交"
+              COMMIT_LOGS=$(git log $PREV_TAG..HEAD --pretty=format:"- %h %s (%an, %ad)" --date=short)
+            fi
+          fi
+          
+          echo "COMMIT_LOGS<<EOF" >> $GITHUB_ENV
+          echo "$COMMIT_LOGS" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+          
+          # 设置提交数量环境变量，用于显示在 Release 描述中
+          echo "COMMIT_COUNT=$COMMIT_COUNT" >> $GITHUB_ENV
+          echo "PREV_TAG=$PREV_TAG" >> $GITHUB_ENV
 
       - name: Download all artifacts
         uses: actions/download-artifact@v4
@@ -139,9 +229,27 @@ jobs:
         id: create_release
         uses: softprops/action-gh-release@v2
         with:
-          name: Release ${{ env.VERSION }}
+          name: Generator ${{ env.VERSION }}
           tag_name: ${{ github.event_name == 'workflow_dispatch' && env.VERSION || github.ref_name }}
           draft: false
           prerelease: false
           files: artifacts/**/*
-          generate_release_notes: true
+          body: |
+            # Generator ${{ env.VERSION }}
+            
+            发布时间: ${{ env.BUILD_TIME }}
+            
+            ## 二进制文件
+            
+            - Linux (amd64, arm64)
+            - macOS (amd64, arm64)
+            - Windows (amd64)
+            - Alpine Linux (musl, amd64)
+            
+            所有二进制文件都是静态编译的，不依赖外部库。
+            
+            ## 提交记录
+            
+            ${{ env.PREV_TAG != '' && format('自上一个版本 {0} 以来的提交记录 (共 {1} 条):', env.PREV_TAG, env.COMMIT_COUNT) || format('提交记录 (共 {0} 条):', env.COMMIT_COUNT) }}
+            
+            ${{ env.COMMIT_LOGS }}

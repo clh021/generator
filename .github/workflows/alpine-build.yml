@@ -40,6 +40,43 @@ jobs:
           echo "COMMIT_TIME=$(git log -1 --format=%aI)" >> $GITHUB_ENV
           echo "COMMIT_COUNT=$(git rev-list --count HEAD)" >> $GITHUB_ENV
           echo "BUILD_TIME=$(date -Iseconds)" >> $GITHUB_ENV
+          
+          # 查找上一个标签
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          
+          if [ -z "$PREV_TAG" ]; then
+            # 如果没有找到上一个标签，获取所有提交
+            echo "没有找到上一个标签，获取所有提交记录"
+            COMMIT_COUNT=$(git rev-list --count HEAD)
+            
+            if [ "$COMMIT_COUNT" -gt 20 ]; then
+              # 如果提交数量超过20条，只获取最近20条
+              echo "提交数量($COMMIT_COUNT)超过20条，只获取最近20条"
+              COMMIT_LOGS=$(git log -20 --pretty=format:"- %h %s (%an, %ad)" --date=short)
+            else
+              # 否则获取所有提交
+              echo "提交数量($COMMIT_COUNT)不超过20条，获取所有提交"
+              COMMIT_LOGS=$(git log --pretty=format:"- %h %s (%an, %ad)" --date=short)
+            fi
+          else
+            # 如果找到了上一个标签，获取自上一个标签以来的所有提交
+            echo "找到上一个标签: $PREV_TAG"
+            COMMIT_COUNT=$(git rev-list --count $PREV_TAG..HEAD)
+            
+            if [ "$COMMIT_COUNT" -gt 20 ]; then
+              # 如果提交数量超过20条，只获取最近20条
+              echo "自上一个标签以来的提交数量($COMMIT_COUNT)超过20条，只获取最近20条"
+              COMMIT_LOGS=$(git log -20 --pretty=format:"- %h %s (%an, %ad)" --date=short)
+            else
+              # 否则获取自上一个标签以来的所有提交
+              echo "自上一个标签以来的提交数量($COMMIT_COUNT)不超过20条，获取所有提交"
+              COMMIT_LOGS=$(git log $PREV_TAG..HEAD --pretty=format:"- %h %s (%an, %ad)" --date=short)
+            fi
+          fi
+          
+          echo "COMMIT_LOGS<<EOF" >> $GITHUB_ENV
+          echo "$COMMIT_LOGS" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
 
       - name: Build for Linux (musl)
         env:
