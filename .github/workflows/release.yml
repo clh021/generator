@@ -64,20 +64,46 @@ jobs:
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
-          CGO_ENABLED: 0
+          CGO_ENABLED: 0  # 禁用CGO以生成完全静态的二进制文件，不依赖glibc
         run: |
           # 设置输出文件名
           OUTPUT_NAME=generator-${{ env.VERSION }}-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.suffix }}
-
+          
           # 设置 ldflags 参数
-          LDFLAGS="-X main.Version=${{ env.VERSION }} -X main.CommitID=${{ env.COMMIT_ID }} -X main.CommitTime=${{ env.COMMIT_TIME }} -X main.BuildTime=${{ env.BUILD_TIME }}"
-
+          # -s -w 减小二进制文件大小（删除符号表和调试信息）
+          # -extldflags "-static" 强制使用静态链接
+          LDFLAGS="-s -w -extldflags '-static' -X main.Version=${{ env.VERSION }} -X main.CommitID=${{ env.COMMIT_ID }} -X main.CommitTime=${{ env.COMMIT_TIME }} -X main.BuildTime=${{ env.BUILD_TIME }}"
+          
           # 创建输出目录
           mkdir -p build/dist/bin
-
+          
           # 编译
-          go build -v -ldflags="${LDFLAGS}" -o "build/dist/bin/${OUTPUT_NAME}" cmd/v1/*.go
-
+          go build -v -trimpath -ldflags="${LDFLAGS}" -o "build/dist/bin/${OUTPUT_NAME}" cmd/v1/*.go
+          
+          # 显示编译前的文件大小
+          echo "编译后的文件大小:"
+          ls -lh "build/dist/bin/${OUTPUT_NAME}"
+          
+          # 安装 UPX 压缩工具
+          if [[ "${{ matrix.goos }}" == "linux" || "${{ matrix.goos }}" == "windows" ]]; then
+            sudo apt-get update && sudo apt-get install -y upx
+            
+            # 压缩二进制文件
+            echo "使用 UPX 压缩二进制文件..."
+            upx --best --lzma "build/dist/bin/${OUTPUT_NAME}"
+            
+            # 显示压缩后的文件大小
+            echo "压缩后的文件大小:"
+            ls -lh "build/dist/bin/${OUTPUT_NAME}"
+          fi
+          
+          # 显示二进制文件信息（仅适用于Linux）
+          if [[ "${{ matrix.goos }}" == "linux" ]]; then
+            echo "二进制文件信息:"
+            file "build/dist/bin/${OUTPUT_NAME}" || true
+            ldd "build/dist/bin/${OUTPUT_NAME}" || true
+          fi
+          
           # 创建压缩包
           if [[ "${{ matrix.goos }}" == "windows" ]]; then
             zip -j "build/dist/bin/${OUTPUT_NAME}.zip" "build/dist/bin/${OUTPUT_NAME}"
