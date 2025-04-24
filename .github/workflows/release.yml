@@ -238,8 +238,6 @@ jobs:
           prerelease: false
           files: artifacts/**/*
           body: |
-            # Generator ${{ env.VERSION }}
-
             ## Binary Files
 
             All binary files are statically compiled and do not depend on external libraries.
