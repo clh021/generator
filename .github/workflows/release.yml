@@ -3,11 +3,11 @@ name: Release
 on:
   push:
     tags:
-      - 'v*' # 当推送以 v 开头的标签时触发，例如 v1.0.0
-  workflow_dispatch: # 允许手动触发工作流
+      - 'v*' # Triggered when pushing a tag starting with v, e.g., v1.0.0
+  workflow_dispatch: # Allow manual workflow triggering
     inputs:
       version:
-        description: '版本号 (例如: v1.0.0)'
+        description: 'Version (e.g.: v1.0.0)'
         required: true
         default: 'v0.0.0-manual'
 
@@ -49,7 +49,7 @@ jobs:
       - name: Get version info
         id: get_version
         run: |
-          # 如果是手动触发，使用输入的版本号，否则使用标签版本
+          # If manually triggered, use the input version, otherwise use the tag version
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_ENV
           else
@@ -59,40 +59,40 @@ jobs:
           echo "COMMIT_TIME=$(git log -1 --format=%aI)" >> $GITHUB_ENV
           echo "COMMIT_COUNT=$(git rev-list --count HEAD)" >> $GITHUB_ENV
           echo "BUILD_TIME=$(date -Iseconds)" >> $GITHUB_ENV
-          
-          # 查找上一个标签
+
+          # Find previous tag
           PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
-          
+
           if [ -z "$PREV_TAG" ]; then
-            # 如果没有找到上一个标签，获取所有提交
-            echo "没有找到上一个标签，获取所有提交记录"
+            # If no previous tag found, get all commits
+            echo "No previous tag found, getting all commit records"
             COMMIT_COUNT=$(git rev-list --count HEAD)
-            
+
             if [ "$COMMIT_COUNT" -gt 20 ]; then
-              # 如果提交数量超过20条，只获取最近20条
-              echo "提交数量($COMMIT_COUNT)超过20条，只获取最近20条"
+              # If more than 20 commits, only get the latest 20
+              echo "Commit count ($COMMIT_COUNT) exceeds 20, getting only the latest 20"
               COMMIT_LOGS=$(git log -20 --pretty=format:"- %h %s (%an, %ad)" --date=short)
             else
-              # 否则获取所有提交
-              echo "提交数量($COMMIT_COUNT)不超过20条，获取所有提交"
+              # Otherwise get all commits
+              echo "Commit count ($COMMIT_COUNT) does not exceed 20, getting all commits"
               COMMIT_LOGS=$(git log --pretty=format:"- %h %s (%an, %ad)" --date=short)
             fi
           else
-            # 如果找到了上一个标签，获取自上一个标签以来的所有提交
-            echo "找到上一个标签: $PREV_TAG"
+            # If previous tag found, get all commits since that tag
+            echo "Previous tag found: $PREV_TAG"
             COMMIT_COUNT=$(git rev-list --count $PREV_TAG..HEAD)
-            
+
             if [ "$COMMIT_COUNT" -gt 20 ]; then
-              # 如果提交数量超过20条，只获取最近20条
-              echo "自上一个标签以来的提交数量($COMMIT_COUNT)超过20条，只获取最近20条"
+              # If more than 20 commits since the previous tag, only get the latest 20
+              echo "Commit count since previous tag ($COMMIT_COUNT) exceeds 20, getting only the latest 20"
               COMMIT_LOGS=$(git log -20 --pretty=format:"- %h %s (%an, %ad)" --date=short)
             else
-              # 否则获取自上一个标签以来的所有提交
-              echo "自上一个标签以来的提交数量($COMMIT_COUNT)不超过20条，获取所有提交"
+              # Otherwise get all commits since the previous tag
+              echo "Commit count since previous tag ($COMMIT_COUNT) does not exceed 20, getting all commits"
               COMMIT_LOGS=$(git log $PREV_TAG..HEAD --pretty=format:"- %h %s (%an, %ad)" --date=short)
             fi
           fi
-          
+
           echo "COMMIT_LOGS<<EOF" >> $GITHUB_ENV
           echo "$COMMIT_LOGS" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
@@ -101,47 +101,47 @@ jobs:
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
-          CGO_ENABLED: 0  # 禁用CGO以生成完全静态的二进制文件，不依赖glibc
+          CGO_ENABLED: 0  # Disable CGO to generate fully static binaries, not dependent on glibc
         run: |
-          # 设置输出文件名
+          # Set output filename
           OUTPUT_NAME=generator-${{ env.VERSION }}-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.suffix }}
-          
-          # 设置 ldflags 参数
-          # -s -w 减小二进制文件大小（删除符号表和调试信息）
-          # -extldflags "-static" 强制使用静态链接
+
+          # Set ldflags parameters
+          # -s -w reduce binary file size (remove symbol table and debug info)
+          # -extldflags "-static" force static linking
           LDFLAGS="-s -w -extldflags '-static' -X main.Version=${{ env.VERSION }} -X main.CommitID=${{ env.COMMIT_ID }} -X main.CommitTime=${{ env.COMMIT_TIME }} -X main.BuildTime=${{ env.BUILD_TIME }}"
-          
-          # 创建输出目录
+
+          # Create output directory
           mkdir -p build/dist/bin
-          
-          # 编译
+
+          # Compile
           go build -v -trimpath -ldflags="${LDFLAGS}" -o "build/dist/bin/${OUTPUT_NAME}" cmd/v1/*.go
-          
-          # 显示编译前的文件大小
-          echo "编译后的文件大小:"
+
+          # Display file size after compilation
+          echo "File size after compilation:"
           ls -lh "build/dist/bin/${OUTPUT_NAME}"
-          
-          # 安装 UPX 压缩工具
+
+          # Install UPX compression tool
           if [[ "${{ matrix.goos }}" == "linux" || "${{ matrix.goos }}" == "windows" ]]; then
             sudo apt-get update && sudo apt-get install -y upx
-            
-            # 压缩二进制文件
-            echo "使用 UPX 压缩二进制文件..."
+
+            # Compress binary file
+            echo "Compressing binary file with UPX..."
             upx --best --lzma "build/dist/bin/${OUTPUT_NAME}"
-            
-            # 显示压缩后的文件大小
-            echo "压缩后的文件大小:"
+
+            # Display file size after compression
+            echo "File size after compression:"
             ls -lh "build/dist/bin/${OUTPUT_NAME}"
           fi
-          
-          # 显示二进制文件信息（仅适用于Linux）
+
+          # Display binary file information (Linux only)
           if [[ "${{ matrix.goos }}" == "linux" ]]; then
-            echo "二进制文件信息:"
+            echo "Binary file information:"
             file "build/dist/bin/${OUTPUT_NAME}" || true
             ldd "build/dist/bin/${OUTPUT_NAME}" || true
           fi
-          
-          # 创建压缩包
+
+          # Create archive
           if [[ "${{ matrix.goos }}" == "windows" ]]; then
             zip -j "build/dist/bin/${OUTPUT_NAME}.zip" "build/dist/bin/${OUTPUT_NAME}"
             echo "ASSET=build/dist/bin/${OUTPUT_NAME}.zip" >> $GITHUB_ENV
@@ -172,51 +172,51 @@ jobs:
       - name: Get version info
         id: get_version
         run: |
-          # 如果是手动触发，使用输入的版本号，否则使用标签版本
+          # If manually triggered, use the input version, otherwise use the tag version
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_ENV
           else
             echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
           fi
-          
-          # 查找上一个标签
+
+          # Find previous tag
           PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
-          
+
           if [ -z "$PREV_TAG" ]; then
-            # 如果没有找到上一个标签，获取所有提交
-            echo "没有找到上一个标签，获取所有提交记录"
+            # If no previous tag found, get all commits
+            echo "No previous tag found, getting all commit records"
             COMMIT_COUNT=$(git rev-list --count HEAD)
-            
+
             if [ "$COMMIT_COUNT" -gt 20 ]; then
-              # 如果提交数量超过20条，只获取最近20条
-              echo "提交数量($COMMIT_COUNT)超过20条，只获取最近20条"
+              # If more than 20 commits, only get the latest 20
+              echo "Commit count ($COMMIT_COUNT) exceeds 20, getting only the latest 20"
               COMMIT_LOGS=$(git log -20 --pretty=format:"- %h %s (%an, %ad)" --date=short)
             else
-              # 否则获取所有提交
-              echo "提交数量($COMMIT_COUNT)不超过20条，获取所有提交"
+              # Otherwise get all commits
+              echo "Commit count ($COMMIT_COUNT) does not exceed 20, getting all commits"
               COMMIT_LOGS=$(git log --pretty=format:"- %h %s (%an, %ad)" --date=short)
             fi
           else
-            # 如果找到了上一个标签，获取自上一个标签以来的所有提交
-            echo "找到上一个标签: $PREV_TAG"
+            # If previous tag found, get all commits since that tag
+            echo "Previous tag found: $PREV_TAG"
             COMMIT_COUNT=$(git rev-list --count $PREV_TAG..HEAD)
-            
+
             if [ "$COMMIT_COUNT" -gt 20 ]; then
-              # 如果提交数量超过20条，只获取最近20条
-              echo "自上一个标签以来的提交数量($COMMIT_COUNT)超过20条，只获取最近20条"
+              # If more than 20 commits since the previous tag, only get the latest 20
+              echo "Commit count since previous tag ($COMMIT_COUNT) exceeds 20, getting only the latest 20"
               COMMIT_LOGS=$(git log -20 --pretty=format:"- %h %s (%an, %ad)" --date=short)
             else
-              # 否则获取自上一个标签以来的所有提交
-              echo "自上一个标签以来的提交数量($COMMIT_COUNT)不超过20条，获取所有提交"
+              # Otherwise get all commits since the previous tag
+              echo "Commit count since previous tag ($COMMIT_COUNT) does not exceed 20, getting all commits"
               COMMIT_LOGS=$(git log $PREV_TAG..HEAD --pretty=format:"- %h %s (%an, %ad)" --date=short)
             fi
           fi
-          
+
           echo "COMMIT_LOGS<<EOF" >> $GITHUB_ENV
           echo "$COMMIT_LOGS" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
-          
-          # 设置提交数量环境变量，用于显示在 Release 描述中
+
+          # Set commit count environment variable for display in Release description
           echo "COMMIT_COUNT=$COMMIT_COUNT" >> $GITHUB_ENV
           echo "PREV_TAG=$PREV_TAG" >> $GITHUB_ENV
 
@@ -236,20 +236,13 @@ jobs:
           files: artifacts/**/*
           body: |
             # Generator ${{ env.VERSION }}
-            
-            发布时间: ${{ env.BUILD_TIME }}
-            
-            ## 二进制文件
-            
-            - Linux (amd64, arm64)
-            - macOS (amd64, arm64)
-            - Windows (amd64)
-            - Alpine Linux (musl, amd64)
-            
-            所有二进制文件都是静态编译的，不依赖外部库。
-            
-            ## 提交记录
-            
-            ${{ env.PREV_TAG != '' && format('自上一个版本 {0} 以来的提交记录 (共 {1} 条):', env.PREV_TAG, env.COMMIT_COUNT) || format('提交记录 (共 {0} 条):', env.COMMIT_COUNT) }}
-            
+
+            ## Binary Files
+
+            All binary files are statically compiled and do not depend on external libraries.
+
+            ## Commit History
+
+            ${{ env.PREV_TAG != '' && format('Commits since version {0} (Total: {1}):', env.PREV_TAG, env.COMMIT_COUNT) || format('Commit history (Total: {0}):', env.COMMIT_COUNT) }}
+
             ${{ env.COMMIT_LOGS }}
