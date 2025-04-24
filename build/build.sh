@@ -35,7 +35,7 @@ go mod tidy
 go mod vendor
 
 # 编译项目，添加更多的编译信息
-go build -v -ldflags="${LDFLAGS}" -o build/dist/bin/generator cmd/v1/*.go
+CGO_ENABLED=0 go build -v -ldflags="${LDFLAGS}" -o build/dist/bin/generator cmd/v1/*.go
 
 echo "构建完成，版本号: ${VERSION}"
 
