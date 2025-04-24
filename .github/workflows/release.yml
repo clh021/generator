@@ -1,7 +1,7 @@
 name: Release
 
 env:
-  MAX_COMMIT_LOGS: 20  # Maximum number of commit logs to display in release notes
+  MAX_COMMIT_LOGS: 40  # Maximum number of commit logs to display in release notes
 
 on:
   push:
