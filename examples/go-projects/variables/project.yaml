@@ -1,0 +1,29 @@
+project:
+  name: MyGoProject
+  version: 1.0.0
+  description: "A sample Go project demonstrating various features and best practices."
+  goVersion: "1.16"  # 添加这一行，指定 Go 版本
+  features:
+    - "RESTful API endpoints"
+    - "Database integration"
+    - "Authentication middleware"
+    - "Logging and error handling"
+
+routes:
+  - path: /hello
+    handler: helloHandler
+    description: "Responds with a friendly greeting"
+  - path: /world
+    handler: worldHandler
+    description: "Returns information about the world"
+
+# 可以根据需要添加更多配置项
+database:
+  driver: postgres
+  host: localhost
+  port: 5432
+  name: mygoproject_db
+
+server:
+  port: 8080
+  host: 0.0.0.0
