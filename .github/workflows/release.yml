@@ -232,7 +232,7 @@ jobs:
         id: create_release
         uses: softprops/action-gh-release@v2
         with:
-          name: Generator ${{ env.VERSION }}
+          name: ${{ env.VERSION }}
           tag_name: ${{ github.event_name == 'workflow_dispatch' && env.VERSION || github.ref_name }}
           draft: false
           prerelease: false
