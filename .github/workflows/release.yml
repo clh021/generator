@@ -1,5 +1,8 @@
 name: Release
 
+env:
+  MAX_COMMIT_LOGS: 20  # Maximum number of commit logs to display in release notes
+
 on:
   push:
     tags:
@@ -68,13 +71,13 @@ jobs:
             echo "No previous tag found, getting all commit records"
             COMMIT_COUNT=$(git rev-list --count HEAD)
 
-            if [ "$COMMIT_COUNT" -gt 20 ]; then
-              # If more than 20 commits, only get the latest 20
-              echo "Commit count ($COMMIT_COUNT) exceeds 20, getting only the latest 20"
-              COMMIT_LOGS=$(git log -20 --pretty=format:"- %h %s (%an, %ad)" --date=short)
+            if [ "$COMMIT_COUNT" -gt $MAX_COMMIT_LOGS ]; then
+              # If more than MAX_COMMIT_LOGS commits, only get the latest MAX_COMMIT_LOGS
+              echo "Commit count ($COMMIT_COUNT) exceeds $MAX_COMMIT_LOGS, getting only the latest $MAX_COMMIT_LOGS"
+              COMMIT_LOGS=$(git log -$MAX_COMMIT_LOGS --pretty=format:"- %h %s (%an, %ad)" --date=short)
             else
               # Otherwise get all commits
-              echo "Commit count ($COMMIT_COUNT) does not exceed 20, getting all commits"
+              echo "Commit count ($COMMIT_COUNT) does not exceed $MAX_COMMIT_LOGS, getting all commits"
               COMMIT_LOGS=$(git log --pretty=format:"- %h %s (%an, %ad)" --date=short)
             fi
           else
@@ -82,13 +85,13 @@ jobs:
             echo "Previous tag found: $PREV_TAG"
             COMMIT_COUNT=$(git rev-list --count $PREV_TAG..HEAD)
 
-            if [ "$COMMIT_COUNT" -gt 20 ]; then
-              # If more than 20 commits since the previous tag, only get the latest 20
-              echo "Commit count since previous tag ($COMMIT_COUNT) exceeds 20, getting only the latest 20"
-              COMMIT_LOGS=$(git log -20 --pretty=format:"- %h %s (%an, %ad)" --date=short)
+            if [ "$COMMIT_COUNT" -gt $MAX_COMMIT_LOGS ]; then
+              # If more than MAX_COMMIT_LOGS commits since the previous tag, only get the latest MAX_COMMIT_LOGS
+              echo "Commit count since previous tag ($COMMIT_COUNT) exceeds $MAX_COMMIT_LOGS, getting only the latest $MAX_COMMIT_LOGS"
+              COMMIT_LOGS=$(git log -$MAX_COMMIT_LOGS --pretty=format:"- %h %s (%an, %ad)" --date=short)
             else
               # Otherwise get all commits since the previous tag
-              echo "Commit count since previous tag ($COMMIT_COUNT) does not exceed 20, getting all commits"
+              echo "Commit count since previous tag ($COMMIT_COUNT) does not exceed $MAX_COMMIT_LOGS, getting all commits"
               COMMIT_LOGS=$(git log $PREV_TAG..HEAD --pretty=format:"- %h %s (%an, %ad)" --date=short)
             fi
           fi
@@ -187,13 +190,13 @@ jobs:
             echo "No previous tag found, getting all commit records"
             COMMIT_COUNT=$(git rev-list --count HEAD)
 
-            if [ "$COMMIT_COUNT" -gt 20 ]; then
-              # If more than 20 commits, only get the latest 20
-              echo "Commit count ($COMMIT_COUNT) exceeds 20, getting only the latest 20"
-              COMMIT_LOGS=$(git log -20 --pretty=format:"- %h %s (%an, %ad)" --date=short)
+            if [ "$COMMIT_COUNT" -gt $MAX_COMMIT_LOGS ]; then
+              # If more than MAX_COMMIT_LOGS commits, only get the latest MAX_COMMIT_LOGS
+              echo "Commit count ($COMMIT_COUNT) exceeds $MAX_COMMIT_LOGS, getting only the latest $MAX_COMMIT_LOGS"
+              COMMIT_LOGS=$(git log -$MAX_COMMIT_LOGS --pretty=format:"- %h %s (%an, %ad)" --date=short)
             else
               # Otherwise get all commits
-              echo "Commit count ($COMMIT_COUNT) does not exceed 20, getting all commits"
+              echo "Commit count ($COMMIT_COUNT) does not exceed $MAX_COMMIT_LOGS, getting all commits"
               COMMIT_LOGS=$(git log --pretty=format:"- %h %s (%an, %ad)" --date=short)
             fi
           else
@@ -201,13 +204,13 @@ jobs:
             echo "Previous tag found: $PREV_TAG"
             COMMIT_COUNT=$(git rev-list --count $PREV_TAG..HEAD)
 
-            if [ "$COMMIT_COUNT" -gt 20 ]; then
-              # If more than 20 commits since the previous tag, only get the latest 20
-              echo "Commit count since previous tag ($COMMIT_COUNT) exceeds 20, getting only the latest 20"
-              COMMIT_LOGS=$(git log -20 --pretty=format:"- %h %s (%an, %ad)" --date=short)
+            if [ "$COMMIT_COUNT" -gt $MAX_COMMIT_LOGS ]; then
+              # If more than MAX_COMMIT_LOGS commits since the previous tag, only get the latest MAX_COMMIT_LOGS
+              echo "Commit count since previous tag ($COMMIT_COUNT) exceeds $MAX_COMMIT_LOGS, getting only the latest $MAX_COMMIT_LOGS"
+              COMMIT_LOGS=$(git log -$MAX_COMMIT_LOGS --pretty=format:"- %h %s (%an, %ad)" --date=short)
             else
               # Otherwise get all commits since the previous tag
-              echo "Commit count since previous tag ($COMMIT_COUNT) does not exceed 20, getting all commits"
+              echo "Commit count since previous tag ($COMMIT_COUNT) does not exceed $MAX_COMMIT_LOGS, getting all commits"
               COMMIT_LOGS=$(git log $PREV_TAG..HEAD --pretty=format:"- %h %s (%an, %ad)" --date=short)
             fi
           fi
