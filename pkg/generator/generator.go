@@ -98,6 +98,36 @@ func (g *Generator) Generate(cfg *config.Config) error {
 			return nil
 		}
 
+		// 检查是否应该跳过此模板（基于后缀）
+		if cfg.SkipTemplateSuffixes != "" {
+			suffixes := strings.Split(cfg.SkipTemplateSuffixes, ",")
+			for _, suffix := range suffixes {
+				suffix = strings.TrimSpace(suffix)
+				if suffix != "" && strings.HasSuffix(path, suffix) {
+					log.Printf("跳过后缀匹配的模板: %s (后缀: %s)", path, suffix)
+					return nil
+				}
+			}
+		}
+
+		// 检查是否应该跳过此模板（基于前缀）
+		if cfg.SkipTemplatePrefixes != "" {
+			prefixes := strings.Split(cfg.SkipTemplatePrefixes, ",")
+			for _, prefix := range prefixes {
+				prefix = strings.TrimSpace(prefix)
+				if prefix != "" {
+					// 将相对路径转换为与前缀匹配的格式
+					relPath, err := filepath.Rel(cfg.TemplateDir, path)
+					if err == nil {
+						if strings.HasPrefix(relPath, prefix) {
+							log.Printf("跳过前缀匹配的模板: %s (前缀: %s)", path, prefix)
+							return nil
+						}
+					}
+				}
+			}
+		}
+
 		relativePath, err := filepath.Rel(cfg.TemplateDir, path)
 		if err != nil {
 			return errors.Wrap(err, "获取相对路径失败")

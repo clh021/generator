@@ -13,6 +13,8 @@ A template-based code generator that supports generating code from configuration
 - **Sub-templates: Allow templates to include other templates, enabling template reuse and modularization.**
 - **Template path variables: Support for variable references in output paths, e.g., `__variable__`, for more flexible file organization.**
 - **Skip child template generation: Automatically skip files with `__child__` in the template file path to avoid generating unnecessary child template files.**
+- **Skip templates by suffix: Skip template files with specific suffixes, e.g., `.go.tpl.tpl`, to selectively generate certain types of files.**
+- **Skip templates by prefix: Skip template files with specific path prefixes, e.g., `web/`, to selectively generate server-side or client-side code.**
 
 ## Getting Started
 
@@ -40,6 +42,12 @@ Options:
         Variables directory path (default ".gen_variables")
   -varfiles string
         Variable files path, multiple files separated by commas
+  -skip-suffixes string
+        Skip template files with specific suffixes, multiple suffixes separated by commas
+        Example: -skip-suffixes=.go.tpl.tpl,.vue.tpl
+  -skip-prefixes string
+        Skip template files with specific path prefixes, multiple prefixes separated by commas
+        Example: -skip-prefixes=web,server/config
 ```
 
 ### Examples
@@ -72,6 +80,24 @@ Options:
 
     ```
     ./generator -varfiles file1.yaml,file2.yaml
+    ```
+
+6. Skip template files with specific suffixes:
+
+    ```
+    ./generator -skip-suffixes=.go.tpl.tpl,.vue.tpl
+    ```
+
+7. Generate only server-side code (skip web templates):
+
+    ```
+    ./generator -skip-prefixes=web
+    ```
+
+8. Generate only client-side code (skip server templates):
+
+    ```
+    ./generator -skip-prefixes=server
     ```
 
 ## Configuration Files
@@ -107,6 +133,8 @@ func main() {
 		VariableFiles: []string{         // Optional: specify additional variable files
 			"./custom_variables.yaml",
 		},
+		SkipTemplateSuffixes: ".go.tpl.tpl,.vue.tpl",  // Optional: skip files with these suffixes
+		SkipTemplatePrefixes: "web",                   // Optional: skip files with these path prefixes
 	}
 
 	// Execute generation
@@ -127,6 +155,8 @@ func main() {
    - `VariablesDir`: Variables directory path
    - `OutputDir`: Output directory path
    - `VariableFiles`: (Optional) List of additional variable file paths
+   - `SkipTemplateSuffixes`: (Optional) Skip template files with specific suffixes, multiple suffixes separated by commas
+   - `SkipTemplatePrefixes`: (Optional) Skip template files with specific path prefixes, multiple prefixes separated by commas
 
 3. **Execute generation**: Call the `gen.Generate(cfg)` method to execute code generation.
 

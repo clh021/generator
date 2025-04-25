@@ -13,6 +13,8 @@
 - **支持子模板：允许模板包含其他模板，实现模板复用和模块化。**
 - **模板路径变量：支持在输出路径中使用变量引用，例如 `__variable__`，实现更灵活的文件组织。**
 - **跳过子模板生成：自动跳过模板文件路径中包含 `__child__` 的文件，避免生成多余的子模板文件。**
+- **按后缀跳过模板：跳过具有特定后缀的模板文件，例如 `.go.tpl.tpl`，以选择性地生成特定类型的文件。**
+- **按前缀跳过模板：跳过具有特定路径前缀的模板文件，例如 `web/`，以选择性地生成服务端或客户端代码。**
 
 ## 开始使用
 
@@ -40,6 +42,12 @@ generator [选项]
         变量目录路径 (默认 ".gen_variables")
   -varfiles string
         变量文件路径，多个文件用逗号分隔
+  -skip-suffixes string
+        跳过特定后缀的模板文件，多个后缀用逗号分隔
+        例如: -skip-suffixes=.go.tpl.tpl,.vue.tpl
+  -skip-prefixes string
+        跳过特定前缀路径的模板文件，多个前缀用逗号分隔
+        例如: -skip-prefixes=web,server/config
 ```
 
 ### 示例
@@ -72,6 +80,24 @@ generator [选项]
 
     ```
     ./generator -varfiles file1.yaml,file2.yaml
+    ```
+
+6.  跳过特定后缀的模板文件：
+
+    ```
+    ./generator -skip-suffixes=.go.tpl.tpl,.vue.tpl
+    ```
+
+7.  只生成服务端代码（跳过 web 模板）：
+
+    ```
+    ./generator -skip-prefixes=web
+    ```
+
+8.  只生成客户端代码（跳过 server 模板）：
+
+    ```
+    ./generator -skip-prefixes=server
     ```
 
 ## 配置文件
@@ -107,6 +133,8 @@ func main() {
 		VariableFiles: []string{         // 可选：指定额外的变量文件
 			"./custom_variables.yaml",
 		},
+		SkipTemplateSuffixes: ".go.tpl.tpl,.vue.tpl",  // 可选：跳过这些后缀的文件
+		SkipTemplatePrefixes: "web",                   // 可选：跳过这些路径前缀的文件
 	}
 
 	// 执行生成
@@ -127,6 +155,8 @@ func main() {
    - `VariablesDir`：变量目录路径
    - `OutputDir`：输出目录路径
    - `VariableFiles`：（可选）额外的变量文件路径列表
+   - `SkipTemplateSuffixes`：（可选）跳过特定后缀的模板文件，多个后缀用逗号分隔
+   - `SkipTemplatePrefixes`：（可选）跳过特定前缀路径的模板文件，多个前缀用逗号分隔
 
 3. **执行生成**：调用 `gen.Generate(cfg)` 方法执行代码生成。
 

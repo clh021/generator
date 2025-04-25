@@ -197,6 +197,177 @@ func TestRemoveTemplateExtension(t *testing.T) {
 	}
 }
 
+func TestSkipTemplateSuffixes(t *testing.T) {
+	// Create temporary directories
+	rootDir, err := os.MkdirTemp("", "generator-skip-suffix-test")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(rootDir)
+
+	templateDir := filepath.Join(rootDir, "templates")
+	variableDir := filepath.Join(rootDir, "variables")
+	outputDir := filepath.Join(rootDir, "output")
+
+	for _, dir := range []string{templateDir, variableDir, outputDir} {
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			t.Fatalf("Failed to create directory %s: %v", dir, err)
+		}
+	}
+
+	// Create template files with different suffixes
+	templateFiles := map[string]string{
+		filepath.Join(templateDir, "normal.txt.tpl"):      "Normal template",
+		filepath.Join(templateDir, "skip1.go.tpl.tpl"):    "Should be skipped by suffix .go.tpl.tpl",
+		filepath.Join(templateDir, "skip2.vue.tpl"):       "Should be skipped by suffix .vue.tpl",
+		filepath.Join(templateDir, "not_skip.go.tpl"):     "Should not be skipped",
+	}
+
+	for path, content := range templateFiles {
+		dir := filepath.Dir(path)
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			t.Fatalf("Failed to create directory %s: %v", dir, err)
+		}
+		if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+			t.Fatalf("Failed to write template file %s: %v", path, err)
+		}
+	}
+
+	// Create variable file
+	variableContent := []byte(`
+key: value
+`)
+
+	variableFile := filepath.Join(variableDir, "variables.yaml")
+	if err := os.WriteFile(variableFile, variableContent, 0644); err != nil {
+		t.Fatalf("Failed to write variable file: %v", err)
+	}
+
+	// Run generator with skip suffixes
+	g := NewGenerator()
+	cfg := &config.Config{
+		TemplateDir:          templateDir,
+		VariablesDir:         variableDir,
+		OutputDir:            outputDir,
+		SkipTemplateSuffixes: ".go.tpl.tpl,.vue.tpl",
+	}
+	err = g.Generate(cfg)
+	if err != nil {
+		t.Fatalf("Generate() error = %v", err)
+	}
+
+	// Verify output files - skipped files should not exist
+	expectedFiles := map[string]bool{
+		filepath.Join(outputDir, "normal.txt"):  true,  // Should exist
+		filepath.Join(outputDir, "skip1.go.tpl"): false, // Should not exist
+		filepath.Join(outputDir, "skip2.vue"):    false, // Should not exist
+		filepath.Join(outputDir, "not_skip.go"):   true,  // Should exist
+	}
+
+	for path, shouldExist := range expectedFiles {
+		_, err := os.Stat(path)
+		exists := !os.IsNotExist(err)
+
+		if exists != shouldExist {
+			if shouldExist {
+				t.Errorf("Expected file %s to exist, but it doesn't", path)
+			} else {
+				t.Errorf("Expected file %s to not exist, but it does", path)
+			}
+		}
+	}
+}
+
+func TestSkipTemplatePrefixes(t *testing.T) {
+	// Create temporary directories
+	rootDir, err := os.MkdirTemp("", "generator-skip-prefix-test")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(rootDir)
+
+	templateDir := filepath.Join(rootDir, "templates")
+	variableDir := filepath.Join(rootDir, "variables")
+	outputDir := filepath.Join(rootDir, "output")
+
+	for _, dir := range []string{templateDir, variableDir, outputDir} {
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			t.Fatalf("Failed to create directory %s: %v", dir, err)
+		}
+	}
+
+	// Create template directories with different prefixes
+	webDir := filepath.Join(templateDir, "web")
+	serverDir := filepath.Join(templateDir, "server")
+	commonDir := filepath.Join(templateDir, "common")
+
+	for _, dir := range []string{webDir, serverDir, commonDir} {
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			t.Fatalf("Failed to create directory %s: %v", dir, err)
+		}
+	}
+
+	// Create template files in different directories
+	templateFiles := map[string]string{
+		filepath.Join(webDir, "index.html.tpl"):      "Web template",
+		filepath.Join(webDir, "style.css.tpl"):       "Web CSS",
+		filepath.Join(serverDir, "main.go.tpl"):      "Server template",
+		filepath.Join(serverDir, "config.json.tpl"):  "Server config",
+		filepath.Join(commonDir, "README.md.tpl"):    "Common template",
+	}
+
+	for path, content := range templateFiles {
+		if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+			t.Fatalf("Failed to write template file %s: %v", path, err)
+		}
+	}
+
+	// Create variable file
+	variableContent := []byte(`
+key: value
+`)
+
+	variableFile := filepath.Join(variableDir, "variables.yaml")
+	if err := os.WriteFile(variableFile, variableContent, 0644); err != nil {
+		t.Fatalf("Failed to write variable file: %v", err)
+	}
+
+	// Run generator with skip prefixes
+	g := NewGenerator()
+	cfg := &config.Config{
+		TemplateDir:          templateDir,
+		VariablesDir:         variableDir,
+		OutputDir:            outputDir,
+		SkipTemplatePrefixes: "web,server/config",
+	}
+	err = g.Generate(cfg)
+	if err != nil {
+		t.Fatalf("Generate() error = %v", err)
+	}
+
+	// Verify output files - skipped files should not exist
+	expectedFiles := map[string]bool{
+		filepath.Join(outputDir, "web", "index.html"):     false, // Should not exist (skipped by prefix)
+		filepath.Join(outputDir, "web", "style.css"):      false, // Should not exist (skipped by prefix)
+		filepath.Join(outputDir, "server", "main.go"):     true,  // Should exist
+		filepath.Join(outputDir, "server", "config.json"): false, // Should not exist (skipped by prefix)
+		filepath.Join(outputDir, "common", "README.md"):   true,  // Should exist
+	}
+
+	for path, shouldExist := range expectedFiles {
+		_, err := os.Stat(path)
+		exists := !os.IsNotExist(err)
+
+		if exists != shouldExist {
+			if shouldExist {
+				t.Errorf("Expected file %s to exist, but it doesn't", path)
+			} else {
+				t.Errorf("Expected file %s to not exist, but it does", path)
+			}
+		}
+	}
+}
+
 func TestGenerateEndToEnd(t *testing.T) {
 	// Create temporary directories
 	rootDir, err := os.MkdirTemp("", "generator-test")
