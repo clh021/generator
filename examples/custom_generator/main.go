@@ -45,9 +45,9 @@ func (f *CustomTemplateFilter) ShouldInclude(path, relativePath string) (bool, s
 func main() {
 	// 创建配置
 	cfg := &config.Config{
-		TemplateDir:   "./templates",
-		VariablesDir:  "./variables",
-		OutputDir:     "./output",
+		TemplateDir:   "/tmp/generator_test/templates",
+		VariablesDir:  "/tmp/generator_test/variables",
+		OutputDir:     "/tmp/generator_test/output/custom_generator",
 		VariableFiles: []string{},
 	}
 

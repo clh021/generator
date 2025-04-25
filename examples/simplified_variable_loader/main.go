@@ -393,9 +393,9 @@ func fileExists(path string) bool {
 func main() {
 	// 创建配置
 	cfg := &config.Config{
-		TemplateDir:   "./templates",
-		VariablesDir:  "./variables",
-		OutputDir:     "./output",
+		TemplateDir:   "/tmp/generator_test/templates",
+		VariablesDir:  "/tmp/generator_test/variables",
+		OutputDir:     "/tmp/generator_test/output/simplified_variable_loader",
 		VariableFiles: []string{},
 	}
 
