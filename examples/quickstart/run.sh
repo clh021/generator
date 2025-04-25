@@ -28,6 +28,15 @@ go mod vendor
 # 进入当前 example 目录
 cd "${EXAMPLE_DIR}"
 
-# 运行
+# 清理之前的输出
+rm -rf .gen_templates .gen_variables .gen_output .gen_config.yaml
+
+# 运行生成器生成示例文件
 go build -o generator "${CMD_DIR}/main.go"
 ./generator -quickstart
+
+# 运行生成器处理示例文件
+./generator
+
+echo "快速开始示例已生成并执行。"
+echo "生成的文件位于: ${EXAMPLE_DIR}/.gen_output"
