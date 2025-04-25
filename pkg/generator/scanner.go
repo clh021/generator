@@ -47,7 +47,7 @@ func (s *DefaultTemplateScanner) ScanTemplates(templateDir string, filter Templa
 		}
 
 		// 检查是否应该包含此模板
-		include, reason := filter.ShouldInclude(path, relativePath)
+		include, _ := filter.ShouldInclude(path, relativePath)
 		if !include {
 			// 可以添加日志记录，但为了保持函数纯净，这里不添加日志
 			return nil

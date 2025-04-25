@@ -10,7 +10,7 @@ import (
 // ContentGenerator 定义内容生成器接口
 type ContentGenerator interface {
 	// GenerateContent 生成单个文件的内容
-	GenerateContent(templateFile TemplateFile, outputPath string, engine *template.Engine) (string, error)
+	GenerateContent(templateFile TemplateFile, outputPath string, engine interface{}) (string, error)
 }
 
 // DefaultContentGenerator 默认的内容生成器实现
@@ -22,12 +22,18 @@ func NewDefaultContentGenerator() *DefaultContentGenerator {
 }
 
 // GenerateContent 生成单个文件的内容
-func (g *DefaultContentGenerator) GenerateContent(templateFile TemplateFile, outputPath string, engine *template.Engine) (string, error) {
+func (g *DefaultContentGenerator) GenerateContent(templateFile TemplateFile, outputPath string, engine interface{}) (string, error) {
 	log.Printf("正在处理模板: %s", templateFile.Path)
 	log.Printf("目标输出路径: %s", outputPath)
 
+	// 类型断言
+	templateEngine, ok := engine.(*template.Engine)
+	if !ok {
+		return "", errors.New("引擎类型不是 *template.Engine")
+	}
+
 	// 生成内容
-	content, err := engine.GenerateContent(templateFile.Path, outputPath)
+	content, err := templateEngine.GenerateContent(templateFile.Path, outputPath)
 	if err != nil {
 		return "", errors.Wrapf(err, "执行模板失败 (%s)", templateFile.Path)
 	}

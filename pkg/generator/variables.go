@@ -3,7 +3,6 @@ package generator
 import (
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/clh021/generator/internal/template"
 	"github.com/pkg/errors"
