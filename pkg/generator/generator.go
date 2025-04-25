@@ -25,50 +25,47 @@ func NewGenerator() *Generator {
 	}
 }
 
-// Generate 执行生成过程
-func (g *Generator) Generate(cfg *config.Config) error {
+// GenerateFiles 执行生成过程但不写入文件，而是返回生成的文件列表
+func (g *Generator) GenerateFiles(cfg *config.Config) ([]GeneratedFile, error) {
+	var generatedFiles []GeneratedFile
+
 	// 确保所有路径都是绝对路径
 	var err error
 	cfg.TemplateDir, err = filepath.Abs(cfg.TemplateDir)
 	if err != nil {
-		return errors.Wrapf(err, "无法获取模板目录的绝对路径: %s", cfg.TemplateDir)
+		return nil, errors.Wrapf(err, "无法获取模板目录的绝对路径: %s", cfg.TemplateDir)
 	}
 	cfg.VariablesDir, err = filepath.Abs(cfg.VariablesDir)
 	if err != nil {
-		return errors.Wrapf(err, "无法获取变量目录的绝对路径: %s", cfg.VariablesDir)
+		return nil, errors.Wrapf(err, "无法获取变量目录的绝对路径: %s", cfg.VariablesDir)
 	}
 	cfg.OutputDir, err = filepath.Abs(cfg.OutputDir)
 	if err != nil {
-		return errors.Wrapf(err, "无法获取输出目录的绝对路径: %s", cfg.OutputDir)
+		return nil, errors.Wrapf(err, "无法获取输出目录的绝对路径: %s", cfg.OutputDir)
 	}
 
 	// 检查模板目录是否存在
 	if _, err := os.Stat(cfg.TemplateDir); os.IsNotExist(err) {
-		return errors.Wrapf(err, "模板目录不存在: %s", cfg.TemplateDir)
+		return nil, errors.Wrapf(err, "模板目录不存在: %s", cfg.TemplateDir)
 	}
 
 	// 检查变量目录是否存在
 	if _, err := os.Stat(cfg.VariablesDir); os.IsNotExist(err) {
 		if len(cfg.VariableFiles) == 0 {
-			return errors.Wrapf(err, "变量目录不存在且未指定变量文件: %s", cfg.VariablesDir)
+			return nil, errors.Wrapf(err, "变量目录不存在且未指定变量文件: %s", cfg.VariablesDir)
 		}
 		log.Printf("警告: 变量目录不存在: %s，将只使用指定的变量文件", cfg.VariablesDir)
-	}
-
-	// 创建输出目录
-	if err := os.MkdirAll(cfg.OutputDir, 0755); err != nil {
-		return errors.Wrap(err, "创建输出目录失败")
 	}
 
 	// 加载变量文件
 	variableFiles, err := loadVariableFiles(cfg.VariablesDir, cfg.VariableFiles)
 	if err != nil {
-		return errors.Wrap(err, "加载变量文件失败")
+		return nil, errors.Wrap(err, "加载变量文件失败")
 	}
 
 	// 检查是否有可用的变量文件
 	if len(variableFiles) == 0 {
-		return errors.New("没有找到可用的变量文件")
+		return nil, errors.New("没有找到可用的变量文件")
 	}
 
 	// 创建模板引擎
@@ -76,7 +73,7 @@ func (g *Generator) Generate(cfg *config.Config) error {
 
 	// 加载变量
 	if err := engine.LoadVariables(variableFiles); err != nil {
-		return errors.Wrap(err, "加载变量失败")
+		return nil, errors.Wrap(err, "加载变量失败")
 	}
 
 	// 获取变量供路径处理使用
@@ -151,18 +148,27 @@ func (g *Generator) Generate(cfg *config.Config) error {
 		log.Printf("正在处理模板: %s", path)
 		log.Printf("目标输出路径: %s", outputPath)
 
-		if err := engine.Execute(path, outputPath); err != nil {
+		// 生成内容但不写入文件
+		content, err := engine.GenerateContent(path, outputPath)
+		if err != nil {
 			return errors.Wrapf(err, "执行模板失败 (%s)", path)
 		}
+
+		// 添加到生成的文件列表
+		generatedFiles = append(generatedFiles, GeneratedFile{
+			TemplatePath: path,
+			OutputPath:   outputPath,
+			Content:      content,
+		})
 
 		return nil
 	})
 
 	if err != nil {
-		return errors.Wrap(err, "生成过程中出错")
+		return nil, errors.Wrap(err, "生成过程中出错")
 	}
 
-	return nil
+	return generatedFiles, nil
 }
 
 func loadVariableFiles(variablesDir string, additionalFiles []string) ([]string, error) {

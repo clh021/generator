@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"text/template"
 
 	"gopkg.in/yaml.v3"
@@ -42,6 +43,19 @@ func (e *Engine) LoadVariables(variableFiles []string) error {
 
 		// 合并变量
 		for k, v := range vars {
+			// 如果是嵌套的映射，需要特殊处理
+			if existingVal, ok := e.vars[k]; ok {
+				if existingMap, ok := existingVal.(map[string]interface{}); ok {
+					if newMap, ok := v.(map[string]interface{}); ok {
+						// 合并嵌套映射
+						for nk, nv := range newMap {
+							existingMap[nk] = nv
+						}
+						continue
+					}
+				}
+			}
+			// 对于非嵌套映射或新键，直接赋值
 			e.vars[k] = v
 		}
 	}
@@ -49,12 +63,12 @@ func (e *Engine) LoadVariables(variableFiles []string) error {
 	return nil
 }
 
-// Execute 执行单个模板生成
-func (e *Engine) Execute(tplPath, outputPath string) error {
+// GenerateContent 生成模板内容但不写入文件
+func (e *Engine) GenerateContent(tplPath, outputPath string) (string, error) {
 	// 读取模板文件
 	content, err := os.ReadFile(tplPath)
 	if err != nil {
-		return fmt.Errorf("读取模板文件失败: %w", err)
+		return "", fmt.Errorf("读取模板文件失败: %w", err)
 	}
 
 	// 检查是否允许未定义的变量
@@ -73,21 +87,8 @@ func (e *Engine) Execute(tplPath, outputPath string) error {
 	// 解析模板
 	tmpl, err = tmpl.Parse(string(content))
 	if err != nil {
-		return fmt.Errorf("解析模板失败: %w", err)
+		return "", fmt.Errorf("解析模板失败: %w", err)
 	}
-
-	// 创建输出目录
-	outputDir := filepath.Dir(outputPath)
-	if err := os.MkdirAll(outputDir, 0755); err != nil {
-		return fmt.Errorf("创建输出目录失败: %w", err)
-	}
-
-	// 创建输出文件
-	out, err := os.Create(outputPath)
-	if err != nil {
-		return fmt.Errorf("创建输出文件失败: %w", err)
-	}
-	defer out.Close()
 
 	// 传递模板路径
 	varsWithTemplatePath := make(map[string]interface{})
@@ -96,7 +97,9 @@ func (e *Engine) Execute(tplPath, outputPath string) error {
 	}
 	varsWithTemplatePath["__current_template_path"] = tplPath // 添加当前模板路径
 
-	if err := tmpl.Execute(out, varsWithTemplatePath); err != nil { // 使用新的变量
+	// 执行模板到字符串
+	var result strings.Builder
+	if err := tmpl.Execute(&result, varsWithTemplatePath); err != nil {
 		// 执行模板
 		log.Printf(" - 正在执行模板 %s", tplPath)
 		log.Printf(" - 目标输出文件: %s", outputPath)
@@ -105,8 +108,8 @@ func (e *Engine) Execute(tplPath, outputPath string) error {
 			log.Printf("  %s = %v", k, v)
 		}
 
-		return fmt.Errorf("执行模板失败 (template: %s): %w", tplPath, err)
+		return "", fmt.Errorf("执行模板失败 (template: %s): %w", tplPath, err)
 	}
 
-	return nil
+	return result.String(), nil
 }

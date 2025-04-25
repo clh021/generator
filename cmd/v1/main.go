@@ -82,8 +82,25 @@ func main() {
 		cfg.TemplateDir, cfg.VariablesDir, cfg.OutputDir, cfg.VariableFiles)
 
 	gen := generator.NewGenerator()
-	if err := gen.Generate(cfg); err != nil {
+	files, err := gen.GenerateFiles(cfg)
+	if err != nil {
 		log.Fatalf("生成失败: %+v", err)
+	}
+
+	// 写入生成的文件
+	for _, file := range files {
+		// 创建输出目录
+		outputDir := filepath.Dir(file.OutputPath)
+		if err := os.MkdirAll(outputDir, 0755); err != nil {
+			log.Fatalf("创建输出目录失败: %v", err)
+		}
+
+		// 创建输出文件
+		if err := os.WriteFile(file.OutputPath, []byte(file.Content), 0644); err != nil {
+			log.Fatalf("写入文件失败: %v", err)
+		}
+
+		log.Printf("已写入文件: %s", file.OutputPath)
 	}
 
 	log.Println("生成完成")

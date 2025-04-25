@@ -67,10 +67,12 @@ key2:
 	if !ok {
 		t.Fatalf("Expected key2 to be a map")
 	}
-	if nestedMap["nestedKey"] != "nestedValue" {
+
+	// 检查嵌套的键值对
+	if v, ok := nestedMap["nestedKey"].(string); !ok || v != "nestedValue" {
 		t.Errorf("Expected nestedKey to be 'nestedValue', got %v", nestedMap["nestedKey"])
 	}
-	if nestedMap["nestedKey2"] != "nestedValue2" {
+	if v, ok := nestedMap["nestedKey2"].(string); !ok || v != "nestedValue2" {
 		t.Errorf("Expected nestedKey2 to be 'nestedValue2', got %v", nestedMap["nestedKey2"])
 	}
 
@@ -81,7 +83,7 @@ key2:
 	}
 }
 
-func TestExecute(t *testing.T) {
+func TestGenerateContent(t *testing.T) {
 	// 创建临时目录
 	tempDir, err := os.MkdirTemp("", "template_test")
 	if err != nil {
@@ -106,24 +108,18 @@ func TestExecute(t *testing.T) {
 	e.vars["Name"] = "World"
 
 	outputPath := filepath.Join(outputDir, "result.txt")
-	err = e.Execute(templatePath, outputPath)
+	content, err := e.GenerateContent(templatePath, outputPath)
 	if err != nil {
-		t.Fatalf("Execute failed: %v", err)
-	}
-
-	// 检查输出文件内容
-	content, err := os.ReadFile(outputPath)
-	if err != nil {
-		t.Fatalf("Failed to read output file: %v", err)
+		t.Fatalf("GenerateContent failed: %v", err)
 	}
 
 	expectedContent := "Hello, World!"
-	if string(content) != expectedContent {
-		t.Errorf("Expected content to be '%s', got '%s'", expectedContent, string(content))
+	if content != expectedContent {
+		t.Errorf("Expected content to be '%s', got '%s'", expectedContent, content)
 	}
 }
 
-func TestExecuteWithFunctions(t *testing.T) {
+func TestGenerateContentWithFunctions(t *testing.T) {
 	// 创建临时目录
 	tempDir, err := os.MkdirTemp("", "template_functions_test")
 	if err != nil {
@@ -164,15 +160,9 @@ Default value: {{default .MissingValue "default"}}
 	}
 
 	outputPath := filepath.Join(outputDir, "advanced_result.txt")
-	err = e.Execute(templatePath, outputPath)
+	content, err := e.GenerateContent(templatePath, outputPath)
 	if err != nil {
-		t.Fatalf("Execute failed: %v", err)
-	}
-
-	// 检查输出文件内容
-	content, err := os.ReadFile(outputPath)
-	if err != nil {
-		t.Fatalf("Failed to read output file: %v", err)
+		t.Fatalf("GenerateContent failed: %v", err)
 	}
 
 	// 验证输出内容包含预期的模板函数处理结果
@@ -190,8 +180,8 @@ Default value: {{default .MissingValue "default"}}
 	}
 
 	for _, part := range expectedParts {
-		if !strings.Contains(string(content), part) {
-			t.Errorf("Expected output to contain '%s', but it doesn't.\nOutput: %s", part, string(content))
+		if !strings.Contains(content, part) {
+			t.Errorf("Expected output to contain '%s', but it doesn't.\nOutput: %s", part, content)
 		}
 	}
 }
