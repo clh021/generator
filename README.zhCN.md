@@ -44,9 +44,11 @@ generator [选项]
         变量文件路径，多个文件用逗号分隔
   -skip-suffixes string
         跳过特定后缀的模板文件，多个后缀用逗号分隔
+        完整路径(path)进行匹配
         例如: -skip-suffixes=.go.tpl.tpl,.vue.tpl
   -skip-prefixes string
         跳过特定前缀路径的模板文件，多个前缀用逗号分隔
+        相对于模板目录，不要前置/符号
         例如: -skip-prefixes=web,server/config
 ```
 
@@ -155,8 +157,8 @@ func main() {
    - `VariablesDir`：变量目录路径
    - `OutputDir`：输出目录路径
    - `VariableFiles`：（可选）额外的变量文件路径列表
-   - `SkipTemplateSuffixes`：（可选）跳过特定后缀的模板文件，多个后缀用逗号分隔
-   - `SkipTemplatePrefixes`：（可选）跳过特定前缀路径的模板文件，多个前缀用逗号分隔
+   - `SkipTemplateSuffixes`：（可选）跳过特定后缀的模板文件，多个后缀用逗号分隔，完整路径(path)进行匹配
+   - `SkipTemplatePrefixes`：（可选）跳过特定前缀路径的模板文件，多个前缀用逗号分隔，相对于模板目录，不要前置/符号
 
 3. **执行生成**：调用 `gen.Generate(cfg)` 方法执行代码生成。
 

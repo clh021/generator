@@ -44,9 +44,11 @@ Options:
         Variable files path, multiple files separated by commas
   -skip-suffixes string
         Skip template files with specific suffixes, multiple suffixes separated by commas
+        Full path (path) is used for matching
         Example: -skip-suffixes=.go.tpl.tpl,.vue.tpl
   -skip-prefixes string
         Skip template files with specific path prefixes, multiple prefixes separated by commas
+        Relative to the template directory, do not include leading / character
         Example: -skip-prefixes=web,server/config
 ```
 
@@ -155,8 +157,8 @@ func main() {
    - `VariablesDir`: Variables directory path
    - `OutputDir`: Output directory path
    - `VariableFiles`: (Optional) List of additional variable file paths
-   - `SkipTemplateSuffixes`: (Optional) Skip template files with specific suffixes, multiple suffixes separated by commas
-   - `SkipTemplatePrefixes`: (Optional) Skip template files with specific path prefixes, multiple prefixes separated by commas
+   - `SkipTemplateSuffixes`: (Optional) Skip template files with specific suffixes, multiple suffixes separated by commas. Full path is used for matching.
+   - `SkipTemplatePrefixes`: (Optional) Skip template files with specific path prefixes, multiple prefixes separated by commas. Relative to the template directory, do not include leading / character.
 
 3. **Execute generation**: Call the `gen.Generate(cfg)` method to execute code generation.
 
