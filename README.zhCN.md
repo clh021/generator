@@ -80,7 +80,7 @@ generator [选项]
 
 ## 作为库使用
 
-生成器也可以作为 Go 项目中的库使用。导入 `generate/pkg/generator` 包并调用 `Generate` 函数。
+生成器也可以作为 Go 项目中的库使用。导入 `github.com/clh021/generator/pkg/generator` 包并调用 `Generate` 函数。
 
 ### 示例代码
 
@@ -91,8 +91,8 @@ import (
 	"log"
 	"path/filepath"
 
-	"generate/pkg/generator"
-	"generate/pkg/config"
+	"github.com/clh021/generator/pkg/generator"
+	"github.com/clh021/generator/pkg/config"
 )
 
 func main() {

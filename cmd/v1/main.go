@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"generate/pkg/config"
-	"generate/pkg/generator"
+	"github.com/clh021/generator/pkg/config"
+	"github.com/clh021/generator/pkg/generator"
 )
 
 var versionCmd = flag.NewFlagSet("version", flag.ExitOnError)

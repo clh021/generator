@@ -80,7 +80,7 @@ The generator uses YAML format configuration files to define templates and their
 
 ## Using as a Library
 
-The generator can also be used as a library in Go projects. Import the `generate/pkg/generator` package and call the `Generate` function.
+The generator can also be used as a library in Go projects. Import the `github.com/clh021/generator/pkg/generator` package and call the `Generate` function.
 
 ### Example Code
 
@@ -91,8 +91,8 @@ import (
 	"log"
 	"path/filepath"
 
-	"generate/pkg/generator"
-	"generate/pkg/config"
+	"github.com/clh021/generator/pkg/generator"
+	"github.com/clh021/generator/pkg/config"
 )
 
 func main() {

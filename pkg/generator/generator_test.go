@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"generate/pkg/config"
+	"github.com/clh021/generator/pkg/config"
 )
 
 func TestNewGenerator(t *testing.T) {

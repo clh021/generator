@@ -1,4 +1,4 @@
-module generate
+module github.com/clh021/generator
 
 go 1.22.3
 

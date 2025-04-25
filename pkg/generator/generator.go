@@ -1,13 +1,14 @@
 package generator
 
 import (
-	"generate/internal/template"
-	"generate/pkg/config"
 	"log"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
+
+	"github.com/clh021/generator/internal/template"
+	"github.com/clh021/generator/pkg/config"
 
 	"github.com/pkg/errors"
 )
