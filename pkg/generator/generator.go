@@ -2,10 +2,7 @@ package generator
 
 import (
 	"log"
-	"os"
 	"path/filepath"
-	"regexp"
-	"strings"
 
 	"github.com/clh021/generator/internal/template"
 	"github.com/clh021/generator/pkg/config"
@@ -15,14 +12,54 @@ import (
 
 // Generator 代码生成器
 type Generator struct {
-	variables map[string]interface{}
+	variables        map[string]interface{}
+	templateScanner  TemplateScanner
+	variableLoader   VariableLoader
+	pathProcessor    PathProcessor
+	contentGenerator ContentGenerator
+	templateFilter   TemplateFilter
 }
 
 // NewGenerator 创建新的生成器实例
 func NewGenerator() *Generator {
 	return &Generator{
-		variables: make(map[string]interface{}),
+		variables:        make(map[string]interface{}),
+		templateScanner:  NewDefaultTemplateScanner(),
+		variableLoader:   nil, // 将在 GenerateFiles 中初始化
+		pathProcessor:    NewDefaultPathProcessor(),
+		contentGenerator: NewDefaultContentGenerator(),
+		templateFilter:   nil, // 将在 GenerateFiles 中初始化
 	}
+}
+
+// WithTemplateScanner 设置模板扫描器
+func (g *Generator) WithTemplateScanner(scanner TemplateScanner) *Generator {
+	g.templateScanner = scanner
+	return g
+}
+
+// WithVariableLoader 设置变量加载器
+func (g *Generator) WithVariableLoader(loader VariableLoader) *Generator {
+	g.variableLoader = loader
+	return g
+}
+
+// WithPathProcessor 设置路径处理器
+func (g *Generator) WithPathProcessor(processor PathProcessor) *Generator {
+	g.pathProcessor = processor
+	return g
+}
+
+// WithContentGenerator 设置内容生成器
+func (g *Generator) WithContentGenerator(generator ContentGenerator) *Generator {
+	g.contentGenerator = generator
+	return g
+}
+
+// WithTemplateFilter 设置模板过滤器
+func (g *Generator) WithTemplateFilter(filter TemplateFilter) *Generator {
+	g.templateFilter = filter
+	return g
 }
 
 // GenerateFiles 执行生成过程但不写入文件，而是返回生成的文件列表
@@ -44,199 +81,69 @@ func (g *Generator) GenerateFiles(cfg *config.Config) ([]GeneratedFile, error) {
 		return nil, errors.Wrapf(err, "无法获取输出目录的绝对路径: %s", cfg.OutputDir)
 	}
 
-	// 检查模板目录是否存在
-	if _, err := os.Stat(cfg.TemplateDir); os.IsNotExist(err) {
-		return nil, errors.Wrapf(err, "模板目录不存在: %s", cfg.TemplateDir)
+	// 初始化变量加载器（如果未设置）
+	if g.variableLoader == nil {
+		g.variableLoader = NewDefaultVariableLoader(cfg.TemplateDir, cfg.VariablesDir, cfg.OutputDir)
 	}
 
-	// 检查变量目录是否存在
-	if _, err := os.Stat(cfg.VariablesDir); os.IsNotExist(err) {
-		if len(cfg.VariableFiles) == 0 {
-			return nil, errors.Wrapf(err, "变量目录不存在且未指定变量文件: %s", cfg.VariablesDir)
-		}
-		log.Printf("警告: 变量目录不存在: %s，将只使用指定的变量文件", cfg.VariablesDir)
+	// 初始化模板过滤器（如果未设置）
+	if g.templateFilter == nil {
+		g.templateFilter = NewDefaultTemplateFilter(true, cfg.SkipTemplateSuffixes, cfg.SkipTemplatePrefixes, cfg.TemplateDir)
 	}
 
-	// 加载变量文件
-	variableFiles, err := loadVariableFiles(cfg.VariablesDir, cfg.VariableFiles)
+	// 加载变量
+	variables, err := g.variableLoader.LoadVariables(cfg.VariablesDir, cfg.VariableFiles)
 	if err != nil {
-		return nil, errors.Wrap(err, "加载变量文件失败")
+		return nil, errors.Wrap(err, "加载变量失败")
 	}
-
-	// 检查是否有可用的变量文件
-	if len(variableFiles) == 0 {
-		return nil, errors.New("没有找到可用的变量文件")
-	}
+	g.variables = variables
 
 	// 创建模板引擎
 	engine := template.New(cfg.TemplateDir, cfg.VariablesDir, cfg.OutputDir)
 
-	// 加载变量
-	if err := engine.LoadVariables(variableFiles); err != nil {
-		return nil, errors.Wrap(err, "加载变量失败")
+	// 加载变量文件
+	variableFiles, err := g.variableLoader.FindVariableFiles(cfg.VariablesDir, cfg.VariableFiles)
+	if err != nil {
+		return nil, errors.Wrap(err, "查找变量文件失败")
 	}
 
-	// 获取变量供路径处理使用
-	g.variables = engine.GetVariables()
+	// 加载变量到引擎
+	if err := engine.LoadVariables(variableFiles); err != nil {
+		return nil, errors.Wrap(err, "加载变量到引擎失败")
+	}
 
-	// 遍历模板目录
-	err = filepath.Walk(cfg.TemplateDir, func(path string, info os.FileInfo, err error) error {
+	// 扫描模板
+	templateFiles, err := g.templateScanner.ScanTemplates(cfg.TemplateDir, g.templateFilter)
+	if err != nil {
+		return nil, errors.Wrap(err, "扫描模板失败")
+	}
+
+	// 处理每个模板文件
+	for _, templateFile := range templateFiles {
+		// 处理输出路径
+		outputPath, err := g.pathProcessor.ProcessOutputPath(templateFile, cfg.OutputDir, g.variables)
 		if err != nil {
-			return errors.Wrap(err, "遍历模板目录时出错")
+			log.Printf("警告: 处理输出路径失败: %v, 使用默认路径", err)
 		}
 
-		if info.IsDir() {
-			return nil
-		}
-
-		// 检查是否为子模板，如果包含 __child__ 则跳过
-		if strings.Contains(path, "__child__") {
-			log.Printf("跳过子模板: %s", path)
-			return nil
-		}
-
-		// 检查是否应该跳过此模板（基于后缀）
-		if cfg.SkipTemplateSuffixes != "" {
-			suffixes := strings.Split(cfg.SkipTemplateSuffixes, ",")
-			for _, suffix := range suffixes {
-				suffix = strings.TrimSpace(suffix)
-				if suffix != "" && strings.HasSuffix(path, suffix) {
-					log.Printf("跳过后缀匹配的模板: %s (后缀: %s)", path, suffix)
-					return nil
-				}
-			}
-		}
-
-		// 检查是否应该跳过此模板（基于前缀）
-		if cfg.SkipTemplatePrefixes != "" {
-			prefixes := strings.Split(cfg.SkipTemplatePrefixes, ",")
-			for _, prefix := range prefixes {
-				prefix = strings.TrimSpace(prefix)
-				if prefix != "" {
-					// 将相对路径转换为与前缀匹配的格式
-					relPath, err := filepath.Rel(cfg.TemplateDir, path)
-					if err == nil {
-						if strings.HasPrefix(relPath, prefix) {
-							log.Printf("跳过前缀匹配的模板: %s (前缀: %s)", path, prefix)
-							return nil
-						}
-					}
-				}
-			}
-		}
-
-		relativePath, err := filepath.Rel(cfg.TemplateDir, path)
+		// 生成文件内容
+		content, err := g.contentGenerator.GenerateContent(templateFile, outputPath, engine)
 		if err != nil {
-			return errors.Wrap(err, "获取相对路径失败")
-		}
-
-		// 移除模板扩展名
-		relPathWithoutExt := removeTemplateExtension(relativePath)
-
-		// 构建初始输出路径
-		outputPath := filepath.Join(cfg.OutputDir, relPathWithoutExt)
-
-		// 处理路径中的变量
-		processedPath, err := g.processTemplatePath(outputPath, g.variables)
-		if err != nil {
-			log.Printf("警告: 处理目标路径时遇到错误: %v. 使用原始路径", err)
-			// 打印警告，但不终断流程
-		} else {
-			outputPath = processedPath
-		}
-
-		log.Printf("正在处理模板: %s", path)
-		log.Printf("目标输出路径: %s", outputPath)
-
-		// 生成内容但不写入文件
-		content, err := engine.GenerateContent(path, outputPath)
-		if err != nil {
-			return errors.Wrapf(err, "执行模板失败 (%s)", path)
+			return nil, errors.Wrapf(err, "生成内容失败 (%s)", templateFile.Path)
 		}
 
 		// 添加到生成的文件列表
 		generatedFiles = append(generatedFiles, GeneratedFile{
-			TemplatePath: path,
+			TemplatePath: templateFile.Path,
 			OutputPath:   outputPath,
 			Content:      content,
 		})
-
-		return nil
-	})
-
-	if err != nil {
-		return nil, errors.Wrap(err, "生成过程中出错")
 	}
 
 	return generatedFiles, nil
 }
 
-func loadVariableFiles(variablesDir string, additionalFiles []string) ([]string, error) {
-	var files []string
-
-	// 加载目录中的文件
-	if variablesDir != "" {
-		yamlFiles, err := filepath.Glob(filepath.Join(variablesDir, "*.yaml"))
-		if err != nil {
-			return nil, errors.Wrap(err, "查找 *.yaml 变量文件失败")
-		}
-		ymlFiles, err := filepath.Glob(filepath.Join(variablesDir, "*.yml"))
-		if err != nil {
-			return nil, errors.Wrap(err, "查找 *.yml 变量文件失败")
-		}
-		files = append(yamlFiles, ymlFiles...)
-	}
-
-	// 添加额外的文件
-	for _, file := range additionalFiles {
-		if _, err := os.Stat(file); err == nil {
-			files = append(files, file)
-		} else {
-			log.Printf("警告: 无法访问变量文件 %s: %v", file, err)
-		}
-	}
-
-	return files, nil
-}
-
-// removeTemplateExtension 移除模板文件的扩展名
-func removeTemplateExtension(path string) string {
-	return strings.TrimSuffix(path, ".tpl")
-}
-
-// processTemplatePath 处理路径中的变量引用
-// 查找形如 __variable__ 的模板变量并尝试替换
-// 如果变量不存在，则输出警告并保留原始字符串
-func (g *Generator) processTemplatePath(path string, variables map[string]interface{}) (string, error) {
-	re := regexp.MustCompile(`__([^_]+)__`)
-	matches := re.FindAllStringSubmatch(path, -1)
-
-	result := path
-	for _, match := range matches {
-		if len(match) < 2 {
-			continue
-		}
-
-		fullMatch := match[0] // __variable__
-		varName := match[1]   // variable
-
-		// 查找变量值
-		value, ok := variables[varName]
-		if !ok {
-			log.Printf("警告: 在路径 %s 中找不到变量 %s，保留原始字符串", path, varName)
-			continue
-		}
-
-		// 将变量值转换为字符串并替换
-		strValue, ok := value.(string)
-		if !ok {
-			log.Printf("警告: 在路径 %s 中变量 %s 的值不是字符串，保留原始字符串", path, varName)
-			continue
-		}
-
-		result = strings.Replace(result, fullMatch, strValue, -1)
-	}
-
-	// 规范化路径
-	return filepath.Clean(result), nil
-}
+// 以下函数已移至各自的文件中，这里保留注释以便于理解代码结构
+// loadVariableFiles -> variables.go: DefaultVariableLoader.FindVariableFiles
+// removeTemplateExtension -> path.go
+// processTemplatePath -> path.go: DefaultPathProcessor.processTemplatePath

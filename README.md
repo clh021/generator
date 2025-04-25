@@ -108,65 +108,310 @@ The generator uses YAML format configuration files to define templates and their
 
 ## Using as a Library
 
-The generator can also be used as a library in Go projects. Import the `github.com/clh021/generator/pkg/generator` package and call the `Generate` function.
+The generator can be used as a library in Go projects. Import the `github.com/clh021/generator/pkg/generator` package and use the provided interfaces and functions.
 
-### Example Code
+### Basic Example
 
 ```go
 package main
 
 import (
 	"log"
+	"os"
 	"path/filepath"
 
-	"github.com/clh021/generator/pkg/generator"
 	"github.com/clh021/generator/pkg/config"
+	"github.com/clh021/generator/pkg/generator"
 )
 
 func main() {
-	// Create a generator instance
-	gen := generator.NewGenerator()
-
 	// Configure the generator
 	cfg := &config.Config{
-		TemplateDir:  "./templates",      // Template directory
-		VariablesDir: "./variables",     // Variables directory
-		OutputDir:    "./output",        // Output directory
-		VariableFiles: []string{         // Optional: specify additional variable files
+		TemplateDir:   "./templates",      // Template directory
+		VariablesDir:  "./variables",      // Variables directory
+		OutputDir:     "./output",         // Output directory
+		VariableFiles: []string{           // Optional: specify additional variable files
 			"./custom_variables.yaml",
 		},
 		SkipTemplateSuffixes: ".go.tpl.tpl,.vue.tpl",  // Optional: skip files with these suffixes
 		SkipTemplatePrefixes: "web",                   // Optional: skip files with these path prefixes
 	}
 
-	// Execute generation
-	if err := gen.Generate(cfg); err != nil {
-		log.Fatalf("Generation failed: %v", err)
+	// Create a generator instance with default components
+	scanner := generator.NewDefaultTemplateScanner()
+	filter := generator.NewDefaultTemplateFilter(true, cfg.SkipTemplateSuffixes, cfg.SkipTemplatePrefixes, cfg.TemplateDir)
+	pathProcessor := generator.NewDefaultPathProcessor()
+	contentGenerator := generator.NewDefaultContentGenerator()
+
+	// Scan templates
+	templateFiles, err := scanner.ScanTemplates(cfg.TemplateDir, filter)
+	if err != nil {
+		log.Fatalf("Failed to scan templates: %v", err)
+	}
+
+	// Create template engine
+	engine := template.New(cfg.TemplateDir, cfg.VariablesDir, cfg.OutputDir)
+
+	// Load variables
+	variableLoader := generator.NewDefaultVariableLoader(cfg.TemplateDir, cfg.VariablesDir, cfg.OutputDir)
+	variableFiles, err := variableLoader.FindVariableFiles(cfg.VariablesDir, cfg.VariableFiles)
+	if err != nil {
+		log.Fatalf("Failed to find variable files: %v", err)
+	}
+
+	if err := engine.LoadVariables(variableFiles); err != nil {
+		log.Fatalf("Failed to load variables: %v", err)
+	}
+
+	variables := engine.GetVariables()
+
+	// Process each template
+	var generatedFiles []generator.GeneratedFile
+	for _, templateFile := range templateFiles {
+		// Process output path
+		outputPath, err := pathProcessor.ProcessOutputPath(templateFile, cfg.OutputDir, variables)
+		if err != nil {
+			log.Printf("Warning: Failed to process output path: %v, using default path", err)
+		}
+
+		// Generate content
+		content, err := contentGenerator.GenerateContent(templateFile, outputPath, engine)
+		if err != nil {
+			log.Fatalf("Failed to generate content: %v", err)
+		}
+
+		// Add to generated files list
+		generatedFiles = append(generatedFiles, generator.GeneratedFile{
+			TemplatePath: templateFile.Path,
+			OutputPath:   outputPath,
+			Content:      content,
+		})
+	}
+
+	// Write generated files
+	for _, file := range generatedFiles {
+		// Create output directory
+		outputDir := filepath.Dir(file.OutputPath)
+		if err := os.MkdirAll(outputDir, 0755); err != nil {
+			log.Fatalf("Failed to create output directory: %v", err)
+		}
+
+		// Create output file
+		if err := os.WriteFile(file.OutputPath, []byte(file.Content), 0644); err != nil {
+			log.Fatalf("Failed to write file: %v", err)
+		}
+
+		log.Printf("Generated file: %s", file.OutputPath)
 	}
 
 	log.Println("Generation completed")
 }
 ```
 
-### Usage Instructions
+### Modular Components
 
-1. **Create a generator instance**: Use `generator.NewGenerator()` to create a new generator instance.
+The generator provides several interfaces that can be implemented to customize the generation process:
 
-2. **Configure the generator**: Create a `config.Config` struct and set the following fields:
-   - `TemplateDir`: Template directory path
-   - `VariablesDir`: Variables directory path
-   - `OutputDir`: Output directory path
-   - `VariableFiles`: (Optional) List of additional variable file paths
-   - `SkipTemplateSuffixes`: (Optional) Skip template files with specific suffixes, multiple suffixes separated by commas. Full path is used for matching.
-   - `SkipTemplatePrefixes`: (Optional) Skip template files with specific path prefixes, multiple prefixes separated by commas. Relative to the template directory, do not include leading / character.
+#### 1. Template Scanner
 
-3. **Execute generation**: Call the `gen.Generate(cfg)` method to execute code generation.
+The `TemplateScanner` interface is responsible for scanning the template directory and finding template files:
 
-The generator will automatically:
-- Load all variable files
-- Traverse all template files in the template directory
-- Process variable references and sub-templates in the templates
-- Save the generated files to the output directory
+```go
+// TemplateScanner defines the template scanner interface
+type TemplateScanner interface {
+	// ScanTemplates scans the template directory and returns a list of template files
+	ScanTemplates(templateDir string, filter TemplateFilter) ([]TemplateFile, error)
+}
+```
+
+Example of a custom template scanner:
+
+```go
+// CustomScanner is a custom template scanner
+type CustomScanner struct {
+	IncludePatterns []string
+}
+
+// ScanTemplates scans the template directory and returns a list of template files
+func (s *CustomScanner) ScanTemplates(templateDir string, filter TemplateFilter) ([]generator.TemplateFile, error) {
+	var templateFiles []generator.TemplateFile
+
+	// Custom scanning logic...
+
+	return templateFiles, nil
+}
+```
+
+#### 2. Template Filter
+
+The `TemplateFilter` interface is responsible for filtering template files:
+
+```go
+// TemplateFilter defines the template filter interface
+type TemplateFilter interface {
+	// ShouldInclude checks if a template file should be included
+	// Returns: (should include, reason for exclusion)
+	ShouldInclude(path, relativePath string) (bool, string)
+}
+```
+
+Example of a custom template filter:
+
+```go
+// CustomFilter is a custom template filter
+type CustomFilter struct {
+	*generator.DefaultTemplateFilter
+	AllowedExtensions []string
+}
+
+// ShouldInclude checks if a template file should be included
+func (f *CustomFilter) ShouldInclude(path, relativePath string) (bool, string) {
+	// First use the default filter
+	include, reason := f.DefaultTemplateFilter.ShouldInclude(path, relativePath)
+	if !include {
+		return false, reason
+	}
+
+	// Then apply custom filtering logic
+	// ...
+
+	return true, ""
+}
+```
+
+#### 3. Path Processor
+
+The `PathProcessor` interface is responsible for processing output paths:
+
+```go
+// PathProcessor defines the path processor interface
+type PathProcessor interface {
+	// ProcessOutputPath processes the output path for a template file
+	ProcessOutputPath(templateFile TemplateFile, outputDir string, variables map[string]interface{}) (string, error)
+}
+```
+
+Example of a custom path processor:
+
+```go
+// CustomPathProcessor is a custom path processor
+type CustomPathProcessor struct {
+	*generator.DefaultPathProcessor
+	PathPrefix string
+}
+
+// ProcessOutputPath processes the output path for a template file
+func (p *CustomPathProcessor) ProcessOutputPath(templateFile generator.TemplateFile, outputDir string, variables map[string]interface{}) (string, error) {
+	// Use the default processor
+	path, err := p.DefaultPathProcessor.ProcessOutputPath(templateFile, outputDir, variables)
+	if err != nil {
+		return "", err
+	}
+
+	// Add custom prefix
+	if p.PathPrefix != "" {
+		path = filepath.Join(p.PathPrefix, path)
+	}
+
+	return path, nil
+}
+```
+
+#### 4. Content Generator
+
+The `ContentGenerator` interface is responsible for generating content from templates:
+
+```go
+// ContentGenerator defines the content generator interface
+type ContentGenerator interface {
+	// GenerateContent generates content for a template file
+	GenerateContent(templateFile TemplateFile, outputPath string, engine *template.Engine) (string, error)
+}
+```
+
+Example of a custom content generator:
+
+```go
+// CustomContentGenerator is a custom content generator
+type CustomContentGenerator struct {
+	AddGeneratedComment bool
+	CommentPrefix       string
+}
+
+// GenerateContent generates content for a template file
+func (g *CustomContentGenerator) GenerateContent(templateFile generator.TemplateFile, outputPath string, engine *template.Engine) (string, error) {
+	// Generate content
+	content, err := engine.GenerateContent(templateFile.Path, outputPath)
+	if err != nil {
+		return "", err
+	}
+
+	// Add generated comment
+	if g.AddGeneratedComment {
+		// Add comment based on file type
+		// ...
+	}
+
+	return content, nil
+}
+```
+
+#### 5. Variable Loader
+
+The `VariableLoader` interface is responsible for loading variables:
+
+```go
+// VariableLoader defines the variable loader interface
+type VariableLoader interface {
+	// LoadVariables loads variables from the variables directory and additional files
+	LoadVariables(variablesDir string, additionalFiles []string) (map[string]interface{}, error)
+	// FindVariableFiles finds variable files in the variables directory and additional files
+	FindVariableFiles(variablesDir string, additionalFiles []string) ([]string, error)
+}
+```
+
+Example of a custom variable loader:
+
+```go
+// CustomVariableLoader is a custom variable loader
+type CustomVariableLoader struct {
+	*generator.DefaultVariableLoader
+	ExtraVariables map[string]interface{}
+}
+
+// LoadVariables loads variables from the variables directory and additional files
+func (l *CustomVariableLoader) LoadVariables(variablesDir string, additionalFiles []string) (map[string]interface{}, error) {
+	// Load variables using the default loader
+	variables, err := l.DefaultVariableLoader.LoadVariables(variablesDir, additionalFiles)
+	if err != nil {
+		return nil, err
+	}
+
+	// Add extra variables
+	for k, v := range l.ExtraVariables {
+		variables[k] = v
+	}
+
+	return variables, nil
+}
+```
+
+### Simplified Approach
+
+For a more simplified approach, you can create custom functions that encapsulate the generation process:
+
+```go
+// generateFiles generates files using a custom content generator
+func generateFiles(cfg *config.Config, contentGenerator ContentGenerator) ([]generator.GeneratedFile, error) {
+	var generatedFiles []generator.GeneratedFile
+
+	// Template scanning, variable loading, and content generation logic...
+
+	return generatedFiles, nil
+}
+```
+
+This approach allows you to focus on the specific part of the generation process that you want to customize, while reusing the rest of the logic.
 
 ## Template Features
 

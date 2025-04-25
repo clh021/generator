@@ -20,7 +20,7 @@ func TestNewGenerator(t *testing.T) {
 	}
 }
 
-func TestProcessTemplatePath(t *testing.T) {
+func TestDefaultPathProcessor_ProcessTemplatePath(t *testing.T) {
 	tests := []struct {
 		name     string
 		path     string
@@ -74,24 +74,27 @@ func TestProcessTemplatePath(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			g := NewGenerator()
-			g.variables = tt.vars
+			processor := NewDefaultPathProcessor()
+			templateFile := TemplateFile{
+				Path:         "dummy/path",
+				RelativePath: tt.path,
+			}
 
-			result, err := g.processTemplatePath(tt.path, tt.vars)
+			result, err := processor.ProcessOutputPath(templateFile, "", tt.vars)
 
 			if (err != nil) != tt.wantErr {
-				t.Errorf("processTemplatePath() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("ProcessOutputPath() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 
 			if !tt.wantErr && result != tt.expected {
-				t.Errorf("processTemplatePath() = %v, want %v", result, tt.expected)
+				t.Errorf("ProcessOutputPath() = %v, want %v", result, tt.expected)
 			}
 		})
 	}
 }
 
-func TestLoadVariableFiles(t *testing.T) {
+func TestDefaultVariableLoader_FindVariableFiles(t *testing.T) {
 	// 创建临时目录
 	tempDir, err := os.MkdirTemp("", "variable_test")
 	if err != nil {
@@ -116,15 +119,10 @@ func TestLoadVariableFiles(t *testing.T) {
 	}
 
 	// 测试加载目录和额外文件
-	files, err := loadVariableFiles(tempDir, []string{additionalFile})
+	loader := NewDefaultVariableLoader("", "", "")
+	files, err := loader.FindVariableFiles(tempDir, []string{additionalFile})
 	if err != nil {
-		t.Fatalf("loadVariableFiles failed: %v", err)
-	}
-
-	// 由于我们现在允许非存在的文件，所以可能会有4个文件（包括非存在的文件）
-	expectedFiles := 4
-	if len(files) != expectedFiles {
-		t.Errorf("Expected %d files, got %d", expectedFiles, len(files))
+		t.Fatalf("FindVariableFiles failed: %v", err)
 	}
 
 	// 检查是否包含所有预期的文件
@@ -143,15 +141,21 @@ func TestLoadVariableFiles(t *testing.T) {
 	}
 
 	// 测试非存在的目录
-	_, err = loadVariableFiles("/non/existent/dir", nil)
+	files, err = loader.FindVariableFiles("/non/existent/dir", nil)
 	if err != nil {
 		t.Errorf("Expected no error for non-existent directory, got: %v", err)
 	}
+	if len(files) != 0 {
+		t.Errorf("Expected empty file list for non-existent directory, got: %v", files)
+	}
 
 	// 测试非存在的额外文件
-	_, err = loadVariableFiles("", []string{"/non/existent/file.yaml"})
+	files, err = loader.FindVariableFiles("", []string{"/non/existent/file.yaml"})
 	if err != nil {
 		t.Errorf("Expected no error for non-existent additional file, got: %v", err)
+	}
+	if len(files) != 0 {
+		t.Errorf("Expected empty file list for non-existent additional file, got: %v", files)
 	}
 }
 
@@ -190,6 +194,7 @@ func TestRemoveTemplateExtension(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// 使用 path 包中的函数
 			result := removeTemplateExtension(tt.path)
 			if result != tt.expected {
 				t.Errorf("removeTemplateExtension() = %v, want %v", result, tt.expected)
